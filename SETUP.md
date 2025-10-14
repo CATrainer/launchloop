@@ -154,7 +154,12 @@ Railway should auto-detect the backend. Configure it:
 2. **Settings:**
    - Service Name: `backend`
    - Root Directory: `backend`
-   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - Start Command: `python run.py`
+   
+   > **Note:** The `run.py` script automatically handles migrations and database setup on startup. To control what runs, edit `backend/run.py` and toggle these flags:
+   > - `RUN_MIGRATIONS = True` - Runs database migrations on startup
+   > - `RUN_SEEDING = False` - Seeds initial data (only if DB is empty)
+   > - `CREATE_ADMIN = False` - Creates admin user (set `ADMIN_EMAIL` env var)
 
 3. **Variables:** Click "Variables" tab and add:
 
@@ -293,49 +298,67 @@ CORS_ORIGINS=https://<your-frontend-url>.up.railway.app
 
 ## Part 5: Database Setup
 
-### 5.1 Install Railway CLI
+> **Good News!** The `run.py` script handles migrations automatically on backend startup. You only need to follow these steps if you want to manually control database setup.
+
+### 5.1 Check Deployment Logs
+
+After backend service starts, check the logs to verify migrations ran:
 
 ```bash
-npm install -g @railway/cli
+# View backend logs in Railway dashboard or CLI
+railway logs --service backend
 ```
 
-### 5.2 Login and Link
-
-```bash
-# Login to Railway
-railway login
-
-# Link to your project (select from list)
-railway link
+You should see:
 ```
-
-### 5.3 Run Migrations
-
-```bash
-# Run database migrations
-railway run --service backend alembic upgrade head
-```
-
-You should see output like:
-```
+🔧 Running database migrations
 INFO  [alembic.runtime.migration] Running upgrade -> abc123, Initial schema
-INFO  [alembic.runtime.migration] Running upgrade abc123 -> def456, Add projects
-...
+✅ Running database migrations completed successfully
+🚀 Starting Uvicorn server...
 ```
 
-### 5.4 Create Admin User
+### 5.2 Create Admin User (Automated Method)
+
+**Option A: Automatic on startup**
+
+1. In Railway backend service variables, add:
+   ```bash
+   ADMIN_EMAIL=your-email@example.com
+   ```
+
+2. In `backend/run.py`, change:
+   ```python
+   CREATE_ADMIN = True
+   ```
+
+3. Commit and push - admin will be created on next deployment
+
+**Option B: Manual via Railway CLI**
 
 ```bash
-# Create your admin account
+# Install Railway CLI (if not already installed)
+npm install -g @railway/cli
+
+# Login and link to project
+railway login
+railway link
+
+# Create admin user
 railway run --service backend python scripts/create_admin.py your-email@example.com
 ```
 
-Output:
-```
-✅ User is now an admin: your-email@example.com
+### 5.3 Seed Test Data (Optional)
+
+**Option A: Automatic on startup**
+
+In `backend/run.py`, change:
+```python
+RUN_SEEDING = True
 ```
 
-### 5.5 Seed Test Data (Optional)
+Commit and push - seeding will run on next deployment (only if DB is empty).
+
+**Option B: Manual via Railway CLI**
 
 ```bash
 # Add test accounts for testing
@@ -347,6 +370,29 @@ This creates test accounts:
 - `pro@example.com` / `password123` (pro tier)
 - `ultimate@example.com` / `password123` (ultimate tier)
 - `free@example.com` / `password123` (free tier)
+
+### 5.4 Managing Database Updates
+
+After initial deployment, you typically want to **disable automatic migrations**:
+
+1. Edit `backend/run.py`:
+   ```python
+   RUN_MIGRATIONS = False  # Change to False after initial deployment
+   RUN_SEEDING = False     # Keep False unless you need to reset
+   CREATE_ADMIN = False    # Keep False after admin is created
+   ```
+
+2. Commit and push
+
+3. **When you need to run migrations** (after schema changes):
+   - Temporarily set `RUN_MIGRATIONS = True`
+   - Commit and push
+   - After deployment completes, set back to `False`
+   
+   **OR** use Railway CLI:
+   ```bash
+   railway run --service backend alembic upgrade head
+   ```
 
 ---
 
