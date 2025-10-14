@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{VALUE_PROP_HEADLINE}}</title>
+    <meta name="description" content="{{VALUE_PROP_SUBTEXT}}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a202c;
+            background: #ffffff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* Hero Section */
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            padding: 80px 0;
+            background: linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%);
+        }
+        
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        
+        .hero-text h1 {
+            font-size: 56px;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            color: #0f172a;
+        }
+        
+        .hero-text p {
+            font-size: 20px;
+            color: #475569;
+            margin-bottom: 32px;
+        }
+        
+        .hero-image {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .hero-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Problem Section */
+        .problem {
+            padding: 120px 0;
+            background: #ffffff;
+        }
+        
+        .problem-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+        
+        .problem-image {
+            order: 1;
+        }
+        
+        .problem-text {
+            order: 2;
+        }
+        
+        .problem-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 16px;
+        }
+        
+        .section-label {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #e0f2fe;
+            color: #0369a1;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        h2 {
+            font-size: 42px;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            color: #0f172a;
+        }
+        
+        .section-description {
+            font-size: 18px;
+            color: #475569;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+        
+        .impact-text {
+            padding: 24px;
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            font-style: italic;
+            color: #78350f;
+        }
+        
+        /* Solution Section */
+        .solution {
+            padding: 120px 0;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+        
+        .solution-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+        
+        .solution-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 16px;
+        }
+        
+        .benefit-box {
+            padding: 24px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-top: 24px;
+        }
+        
+        /* Audience Section */
+        .audience {
+            padding: 120px 0;
+            background: #ffffff;
+        }
+        
+        .audience-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+        
+        .audience-image {
+            order: 1;
+        }
+        
+        .audience-text {
+            order: 2;
+        }
+        
+        .audience-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 16px;
+        }
+        
+        /* CTA Section */
+        .cta {
+            padding: 120px 0;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .cta h2 {
+            color: white;
+            margin-bottom: 16px;
+        }
+        
+        .cta p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        /* Form */
+        .signup-form {
+            max-width: 500px;
+            margin: 0 auto;
+            display: flex;
+            gap: 12px;
+        }
+        
+        .signup-form input {
+            flex: 1;
+            padding: 16px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .btn {
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-cta {
+            background: white;
+            color: #1e40af;
+        }
+        
+        .btn-cta:hover {
+            background: #f0f9ff;
+        }
+        
+        /* Success Message */
+        .success-message {
+            display: none;
+            padding: 16px;
+            background: #d1fae5;
+            color: #065f46;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-content,
+            .problem-content,
+            .solution-content,
+            .audience-content {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .problem-image,
+            .problem-text,
+            .audience-image,
+            .audience-text {
+                order: unset;
+            }
+            
+            .hero-text h1 {
+                font-size: 36px;
+            }
+            
+            h2 {
+                font-size: 32px;
+            }
+            
+            .signup-form {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>{{VALUE_PROP_HEADLINE}}</h1>
+                    <p>{{VALUE_PROP_SUBTEXT}}</p>
+                    <button class="btn btn-primary" onclick="scrollToCTA()">Join the Waitlist</button>
+                </div>
+                <div class="hero-image">
+                    <img src="{{IMAGE_HERO}}" alt="Product illustration">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem">
+        <div class="container">
+            <div class="problem-content">
+                <div class="problem-image">
+                    <img src="{{IMAGE_PROBLEM}}" alt="Problem illustration">
+                </div>
+                <div class="problem-text">
+                    <span class="section-label">The Problem</span>
+                    <h2>{{PROBLEM_HEADLINE}}</h2>
+                    <p class="section-description">{{PROBLEM_DESCRIPTION}}</p>
+                    <div class="impact-text">
+                        {{PROBLEM_IMPACT}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section class="solution">
+        <div class="container">
+            <div class="solution-content">
+                <div class="solution-text">
+                    <span class="section-label">The Solution</span>
+                    <h2>{{SOLUTION_HEADLINE}}</h2>
+                    <p class="section-description">{{SOLUTION_DESCRIPTION}}</p>
+                    <div class="benefit-box">
+                        <strong>What you get:</strong> {{SOLUTION_BENEFIT}}
+                    </div>
+                </div>
+                <div class="solution-image">
+                    <img src="{{IMAGE_SOLUTION}}" alt="Solution illustration">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Audience Section -->
+    <section class="audience">
+        <div class="container">
+            <div class="audience-content">
+                <div class="audience-image">
+                    <img src="{{IMAGE_AUDIENCE}}" alt="Target audience">
+                </div>
+                <div class="audience-text">
+                    <span class="section-label">Built For</span>
+                    <h2>{{TARGET_AUDIENCE}}</h2>
+                    <p class="section-description">{{AUDIENCE_DESCRIPTION}}</p>
+                    <p class="section-description">{{AUDIENCE_VALUE}}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta" id="cta">
+        <div class="container">
+            <h2>{{CTA_HEADLINE}}</h2>
+            <p>{{CTA_SUBTEXT}}</p>
+            
+            <form class="signup-form" id="signupForm" onsubmit="handleSignup(event)">
+                <input 
+                    type="email" 
+                    id="emailInput" 
+                    placeholder="Enter your email" 
+                    required
+                >
+                <button type="submit" class="btn btn-cta">Join Waitlist</button>
+            </form>
+            
+            <div class="success-message" id="successMessage">
+                Thanks for signing up! We'll be in touch soon.
+            </div>
+        </div>
+    </section>
+
+    <script>
+        function scrollToCTA() {
+            document.getElementById('cta').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        async function handleSignup(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('emailInput').value;
+            const form = document.getElementById('signupForm');
+            const successMessage = document.getElementById('successMessage');
+            
+            try {
+                // Extract subdomain from current URL
+                const hostname = window.location.hostname;
+                const parts = hostname.split('.');
+                const subdomain = parts[0];
+                
+                // Send to backend
+                const response = await fetch('/api/v1/signups', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        subdomain: subdomain,
+                        metadata: {
+                            referrer: document.referrer,
+                            userAgent: navigator.userAgent
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    form.style.display = 'none';
+                    successMessage.style.display = 'block';
+                }
+            } catch (error) {
+                alert('Something went wrong. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>

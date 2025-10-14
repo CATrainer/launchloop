@@ -1,0 +1,48 @@
+{
+  "id": "problem-first",
+  "name": "Problem-First",
+  "version": "1.0",
+  "description": "Leads with the problem, then presents the solution",
+  "best_for": ["b2b_saas", "early_stage", "idea"],
+  "required_fields": [
+    "value_prop_headline",
+    "value_prop_subtext",
+    "problem_headline",
+    "problem_description",
+    "problem_impact",
+    "solution_headline",
+    "solution_description",
+    "solution_benefit",
+    "target_audience",
+    "audience_description",
+    "audience_value",
+    "cta_headline",
+    "cta_subtext"
+  ],
+  "optional_fields": [
+    "credibility_headline",
+    "credibility_story"
+  ],
+  "image_specs": [
+    {
+      "id": "hero",
+      "prompt_template": "Modern 3D illustration of {product_concept}, clean minimalist style, soft lighting, soft blue and white tones, professional, high quality, white background, isometric view",
+      "size": "1024x1024"
+    },
+    {
+      "id": "problem",
+      "prompt_template": "Illustration depicting {current_pain}, exact same visual style as hero, soft blue and white tones, convey difficulty/frustration, minimalist, clean background",
+      "size": "1024x1024"
+    },
+    {
+      "id": "solution",
+      "prompt_template": "Illustration showing {solution_approach}, exact same style, soft blue and white tones, convey clarity/simplicity, clean composition",
+      "size": "1024x1024"
+    },
+    {
+      "id": "audience",
+      "prompt_template": "Illustration of {target_audience} in productive state, exact same style, soft blue and white tones, focused/capable mood",
+      "size": "1024x1024"
+    }
+  ]
+}
