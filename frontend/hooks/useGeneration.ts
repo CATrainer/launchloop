@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { generateAPI } from '../lib/api';
+import { generateAPI } from '@/lib/api';
 
 export function useGeneration(id: string | null) {
   return useQuery({

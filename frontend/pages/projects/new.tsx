@@ -2,14 +2,14 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '../../hooks/useAuth';
-import { useProjects } from '../../hooks/useProjects';
+import { useAuth } from '@/hooks/useAuth';
+import { useProjects } from '@/hooks/useProjects';
 import {
   useExtract,
   useGenerateQuestions,
   useCreateGeneration,
   useGeneration,
-} from '../../hooks/useGeneration';
+} from '@/hooks/useGeneration';
 
 export default function NewProject() {
   const router = useRouter();

@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useAuth } from '../hooks/useAuth';
-import { useProjects } from '../hooks/useProjects';
+import { useAuth } from '@/hooks/useAuth';
+import { useProjects } from '@/hooks/useProjects';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 
