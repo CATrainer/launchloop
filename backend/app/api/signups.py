@@ -140,7 +140,7 @@ async def export_signups(
     
     # Write data
     for signup in signups:
-        metadata = signup.metadata or {}
+        metadata = signup.signup_metadata or {}
         writer.writerow([
             signup.email,
             signup.created_at.isoformat(),

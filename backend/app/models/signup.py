@@ -11,7 +11,7 @@ class Signup(Base):
     project_id = Column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
     
     email = Column(String(255), nullable=False, index=True)
-    metadata = Column(JSON)  # referrer, utm params, etc
+    signup_metadata = Column(JSON)  # referrer, utm params, etc
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     

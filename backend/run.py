@@ -133,7 +133,7 @@ def start_server():
     print("="*60 + "\n")
     
     # Get port from environment or use default
-    port = os.getenv("PORT", "8000")
+    port = os.getenv("PORT", "8080")
     host = "0.0.0.0"
     
     # Start uvicorn (this will block)
