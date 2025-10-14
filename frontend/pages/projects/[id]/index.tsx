@@ -1,8 +1,8 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useProject } from '@/hooks/useProjects';
-import { useAuth } from '@/hooks/useAuth';
+import { useProject } from '../../../hooks/useProjects';
+import { useAuth } from '../../../hooks/useAuth';
 import { useState } from 'react';
 
 export default function ProjectDetail() {
