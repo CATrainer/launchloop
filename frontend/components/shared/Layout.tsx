@@ -9,7 +9,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, requireAuth = false }) => {
   const router = useRouter();
-  const { data: user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   React.useEffect(() => {
     if (requireAuth && !isLoading && !user) {
