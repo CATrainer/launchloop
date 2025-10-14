@@ -248,9 +248,24 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=<paste-stripe-publishable-key>
    - Root Directory: `backend`
    - Start Command: `celery -A app.tasks worker --loglevel=info`
 
-4. **Variables:** (Share with backend - Railway allows variable references)
-   - Copy all variables from backend service
-   - Or use Railway's "Copy all variables from backend" feature
+4. **Connect Services:** (IMPORTANT - Worker needs access to Redis and Postgres)
+   - In the worker service, click "Variables" tab
+   - Click "+ New Variable" → "Add Reference"
+   - Add `DATABASE_URL` → Reference → Select "Postgres" service
+   - Add `REDIS_URL` → Reference → Select "Redis" service
+   
+5. **Copy Other Variables:**
+   - Method 1: Click "RAW Editor" and copy all variables from backend service (except DATABASE_URL and REDIS_URL which you just added as references)
+   - Method 2: Manually copy each variable from backend service:
+     - `ENV`, `DEBUG`, `API_V1_PREFIX`, `APP_NAME`
+     - `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRATION_MINUTES`
+     - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
+     - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_ENDPOINT`
+     - `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, etc.
+     - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+     - `FRONTEND_URL`, `API_URL`, `CORS_ORIGINS` (will update these in section 4.7)
+
+> **Why this matters:** The worker runs background tasks like AI generation and needs access to the same database, Redis, and APIs as the backend.
 
 ### 4.7 Update Cross-Service Variables
 
@@ -262,6 +277,15 @@ FRONTEND_URL=https://<your-frontend-url>.up.railway.app
 API_URL=https://<your-backend-url>.up.railway.app
 CORS_ORIGINS=https://<your-frontend-url>.up.railway.app
 ```
+
+**Worker Service:**
+```bash
+FRONTEND_URL=https://<your-frontend-url>.up.railway.app
+API_URL=https://<your-backend-url>.up.railway.app
+CORS_ORIGINS=https://<your-frontend-url>.up.railway.app
+```
+
+> **Note:** The worker needs these URLs to send emails with correct links and handle callbacks.
 
 **After saving, Railway will automatically redeploy affected services.**
 

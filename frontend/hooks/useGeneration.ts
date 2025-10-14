@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { generateAPI } from '@/lib/api';
+import { generateAPI } from '../lib/api';
 
 export function useGeneration(id: string | null) {
   return useQuery({
@@ -10,8 +10,9 @@ export function useGeneration(id: string | null) {
       return response.data;
     },
     enabled: !!id,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Poll every 2 seconds if generation is in progress
+      const data = query.state.data as any;
       if (data && data.status !== 'COMPLETE' && data.status !== 'FAILED') {
         return 2000;
       }
