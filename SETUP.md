@@ -236,9 +236,11 @@ CORS_ORIGINS=<will-add-after-frontend-deployed>
 
 ```bash
 NEXT_PUBLIC_ENV=staging
-NEXT_PUBLIC_API_URL=<paste-your-backend-url>/api/v1
+NEXT_PUBLIC_API_URL=https://<your-backend-url>.up.railway.app
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=<paste-stripe-publishable-key>
 ```
+
+> **Important:** Do NOT include `/api/v1` in the URL - the frontend client adds it automatically.
 
 4. **Domain:** Generate domain
    - Save this URL (e.g., `frontend-production-xxxx.up.railway.app`)
@@ -471,7 +473,7 @@ API_URL=https://api.yourdomain.com
 CORS_ORIGINS=https://app.yourdomain.com
 
 # Frontend
-NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api/v1
+NEXT_PUBLIC_API_URL=https://api.yourdomain.com
 ```
 
 ---
