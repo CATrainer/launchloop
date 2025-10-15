@@ -83,7 +83,7 @@ export default function NewProject() {
         project_id: projectId,
         template_id: selectedTemplate,
         input_data: inputData,
-        type: 'NEW',
+        type: 'new',
       },
       {
         onSuccess: (response) => {
