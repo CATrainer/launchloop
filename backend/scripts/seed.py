@@ -6,16 +6,16 @@ Usage: python scripts/seed.py
 
 import sys
 import os
-import uuid
 from datetime import datetime
 
 # Add parent directory to path (backend/)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.database import SessionLocal
-from app.models.user import User, Role, Tier
+from app.models.user import User, Role, Tier, PaymentStatus
 from app.models.project import Project, ProjectStatus
-from app.services.auth import auth_service
+from app.services.auth import hash_password
+from app.utils.helpers import generate_uuid, get_usage_reset_date
 
 
 def seed_data():
@@ -37,12 +37,13 @@ def seed_data():
         
         # Free tier user
         free_user = User(
-            id=str(uuid.uuid4()),
+            id=generate_uuid(),
             email="free@example.com",
-            password_hash=auth_service.hash_password("password123"),
+            password_hash=hash_password("password123"),
             tier=Tier.FREE,
             role=Role.USER,
-            usage_reset_date=datetime.utcnow(),
+            payment_status=PaymentStatus.ACTIVE,
+            usage_reset_date=get_usage_reset_date(),
             generations_used_this_month=0,
             revisions_used_this_month=0
         )
@@ -51,12 +52,13 @@ def seed_data():
         
         # Pro tier user
         pro_user = User(
-            id=str(uuid.uuid4()),
+            id=generate_uuid(),
             email="pro@example.com",
-            password_hash=auth_service.hash_password("password123"),
+            password_hash=hash_password("password123"),
             tier=Tier.PRO,
             role=Role.USER,
-            usage_reset_date=datetime.utcnow(),
+            payment_status=PaymentStatus.ACTIVE,
+            usage_reset_date=get_usage_reset_date(),
             generations_used_this_month=1,
             revisions_used_this_month=3
         )
@@ -65,12 +67,13 @@ def seed_data():
         
         # Ultimate tier user
         ultimate_user = User(
-            id=str(uuid.uuid4()),
+            id=generate_uuid(),
             email="ultimate@example.com",
-            password_hash=auth_service.hash_password("password123"),
+            password_hash=hash_password("password123"),
             tier=Tier.ULTIMATE,
             role=Role.USER,
-            usage_reset_date=datetime.utcnow(),
+            payment_status=PaymentStatus.ACTIVE,
+            usage_reset_date=get_usage_reset_date(),
             generations_used_this_month=10,
             revisions_used_this_month=50
         )
@@ -79,12 +82,13 @@ def seed_data():
         
         # Admin user
         admin_user = User(
-            id=str(uuid.uuid4()),
+            id=generate_uuid(),
             email="admin@example.com",
-            password_hash=auth_service.hash_password("password123"),
+            password_hash=hash_password("password123"),
             tier=Tier.ULTIMATE,
             role=Role.ADMIN,
-            usage_reset_date=datetime.utcnow(),
+            payment_status=PaymentStatus.ACTIVE,
+            usage_reset_date=get_usage_reset_date(),
             generations_used_this_month=0,
             revisions_used_this_month=0
         )
@@ -96,7 +100,7 @@ def seed_data():
         # Create test projects
         # Draft project for free user
         draft_project = Project(
-            id=str(uuid.uuid4()),
+            id=generate_uuid(),
             user_id=free_user.id,
             name="My First Product",
             status=ProjectStatus.DRAFT
@@ -105,7 +109,7 @@ def seed_data():
         
         # Published project for pro user
         published_project = Project(
-            id=str(uuid.uuid4()),
+            id=generate_uuid(),
             user_id=pro_user.id,
             name="SaaS Landing Page",
             status=ProjectStatus.PUBLISHED,
@@ -120,7 +124,7 @@ def seed_data():
         # Multiple projects for ultimate user
         for i in range(3):
             project = Project(
-                id=str(uuid.uuid4()),
+                id=generate_uuid(),
                 user_id=ultimate_user.id,
                 name=f"Product {i + 1}",
                 status=ProjectStatus.GENERATED if i == 0 else ProjectStatus.PUBLISHED,
