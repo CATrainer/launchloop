@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
@@ -16,6 +16,7 @@ from app.services.generation import generation_service
 from app.services.llm import llm_service
 from app.services.templates import template_registry
 from app.tasks.generation import process_generation
+import json
 
 router = APIRouter()
 
@@ -85,11 +86,26 @@ async def generate_questions(
 
 @router.post("", response_model=GenerationResponse, status_code=status.HTTP_202_ACCEPTED)
 async def create_generation(
-    generation_data: GenerationCreate,
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Create a new generation"""
+    
+    # Get raw body for debugging
+    body = await request.json()
+    print(f"🔍 RAW Generation request body:")
+    print(json.dumps(body, indent=2))
+    
+    # Parse with Pydantic
+    try:
+        generation_data = GenerationCreate(**body)
+    except Exception as e:
+        print(f"❌ Validation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
     
     # Get project
     project = db.query(Project).filter(
