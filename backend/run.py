@@ -15,10 +15,10 @@ from pathlib import Path
 # ============================================================================
 
 # Set to True to run migrations on startup
-RUN_MIGRATIONS = False
+RUN_MIGRATIONS = True
 
 # Set to True to seed database on startup (only runs if DB is empty)
-RUN_SEEDING = False
+RUN_SEEDING = True
 
 # Set to True to create admin user (requires ADMIN_EMAIL env var)
 CREATE_ADMIN = False
