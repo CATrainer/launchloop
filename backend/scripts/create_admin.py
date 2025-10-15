@@ -7,8 +7,8 @@ Usage: python scripts/create_admin.py <email>
 import sys
 import os
 
-# Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
+# Add parent directory to path (backend/)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.database import SessionLocal
 from app.models.user import User, Role
