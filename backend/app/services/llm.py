@@ -1,5 +1,6 @@
 import anthropic
 import json
+import re
 from typing import Dict, Any, List, Optional
 from app.config import settings
 from app.utils.validators import validate_copy_content
@@ -170,7 +171,11 @@ STYLE:
 - No fluff or filler
 - Each word must earn its place{strict_warning}
 
-OUTPUT (strict JSON with these exact fields):
+OUTPUT REQUIREMENTS:
+- Return ONLY valid JSON
+- NO markdown formatting (no ```json blocks)
+- NO explanatory text before or after the JSON
+- Just the raw JSON object with these exact fields:
 {{
   {", ".join([f'"{field}": "..."' for field in required_fields])}
 }}
@@ -179,7 +184,7 @@ EXAMPLES:
 BAD: "Revolutionize your workflow with cutting-edge AI"
 GOOD: "Stop wasting hours on work that doesn't matter"
 
-Now generate the copy:"""
+Now generate the copy (JSON only, no markdown):"""
         
         try:
             message = self.client.messages.create(
@@ -189,24 +194,82 @@ Now generate the copy:"""
             )
             
             response_text = message.content[0].text
-            generated_copy = json.loads(response_text)
+            
+            # Log raw response for debugging
+            print(f"🎨 Claude raw response (first 500 chars): {response_text[:500]}")
+            
+            # Try to extract JSON from response (handle markdown wrapping)
+            generated_copy = self._extract_json_from_text(response_text)
+            
+            if not generated_copy:
+                print(f"❌ Failed to extract JSON from response")
+                print(f"   Full response: {response_text}")
+                raise Exception("Could not extract valid JSON from Claude response")
+            
+            print(f"✅ Extracted JSON with {len(generated_copy)} fields")
             
             # Validate all fields
             all_valid = True
+            violations_found = []
             for field, value in generated_copy.items():
                 is_valid, violations = validate_copy_content(str(value))
                 if not is_valid:
                     all_valid = False
-                    break
+                    violations_found.extend(violations)
+                    print(f"⚠️ Validation failed for field '{field}': {violations}")
             
             # If validation fails and this isn't a retry, try once more
             if not all_valid and not retry:
+                print(f"🔄 Retrying generation due to validation failures: {violations_found}")
                 return self.generate_copy(template_config, input_data, retry=True)
             
             return generated_copy
         
         except Exception as e:
+            print(f"❌ Copy generation failed: {str(e)}")
             raise Exception(f"Failed to generate copy: {str(e)}")
+    
+    def _extract_json_from_text(self, text: str) -> Optional[Dict[str, Any]]:
+        """Extract JSON from text that may contain markdown or other formatting"""
+        
+        # Try direct JSON parse first
+        try:
+            return json.loads(text)
+        except:
+            pass
+        
+        # Try to find JSON in markdown code blocks
+        
+        # Pattern 1: ```json {...} ```
+        json_pattern = r'```(?:json)?\s*(\{.*?\})\s*```'
+        matches = re.findall(json_pattern, text, re.DOTALL)
+        if matches:
+            try:
+                return json.loads(matches[0])
+            except:
+                pass
+        
+        # Pattern 2: Find any {...} block
+        brace_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+        matches = re.findall(brace_pattern, text, re.DOTALL)
+        for match in matches:
+            try:
+                parsed = json.loads(match)
+                if isinstance(parsed, dict) and len(parsed) > 0:
+                    return parsed
+            except:
+                continue
+        
+        # Pattern 3: Try to extract everything between first { and last }
+        try:
+            start = text.index('{')
+            end = text.rindex('}') + 1
+            json_str = text[start:end]
+            return json.loads(json_str)
+        except:
+            pass
+        
+        return None
 
 
 # Global service instance
