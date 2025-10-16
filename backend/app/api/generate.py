@@ -172,9 +172,22 @@ async def create_generation(
         print(f"   Reason: {error_msg}")
         print(f"   Generations used: {user.generations_used_this_month}")
         print(f"   Revisions used: {user.revisions_used_this_month}")
+        
+        # Get tier limits for better error message
+        from app.utils.helpers import get_tier_limits
+        limits = get_tier_limits(user.tier.value)
+        
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg
+            detail={
+                "message": error_msg,
+                "tier": user.tier.value,
+                "generations_used": user.generations_used_this_month,
+                "generations_limit": limits["generations_per_month"],
+                "revisions_used": user.revisions_used_this_month,
+                "revisions_limit": limits["revisions_per_month"],
+                "usage_reset_date": user.usage_reset_date.isoformat() if user.usage_reset_date else None
+            }
         )
     
     # Create generation

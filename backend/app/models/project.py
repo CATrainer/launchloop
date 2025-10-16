@@ -37,6 +37,9 @@ class Project(Base):
     generated_data = Column(JSON)  # All copy fields
     html_content = Column(Text)
     
+    # Creation flow state (for persistence)
+    creation_state = Column(JSON)  # {step: int, extracted_data: dict, answers: dict, selected_template: str}
+    
     # Signups tracking
     signups_count = Column(Integer, default=0, nullable=False)
     last_signup_at = Column(DateTime)

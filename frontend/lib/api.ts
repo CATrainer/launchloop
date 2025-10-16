@@ -53,6 +53,7 @@ export const projectsAPI = {
   delete: (id: string) => api.delete(`/projects/${id}`),
   publish: (id: string) => api.post(`/projects/${id}/publish`),
   unpublish: (id: string) => api.post(`/projects/${id}/unpublish`),
+  saveState: (id: string, state: any) => api.post(`/projects/${id}/save-state`, state),
 };
 
 // Generation endpoints

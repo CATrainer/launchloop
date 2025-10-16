@@ -3,8 +3,10 @@ import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
 import { useProjects } from '../hooks/useProjects';
 import { useRouter } from 'next/router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { TierLimitBanner } from '../components/shared/TierLimitBanner';
+import { projectsAPI } from '../lib/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -40,6 +42,29 @@ export default function Dashboard() {
 
   const tierLimits = getTierLimits(user.tier);
   const canCreateNew = tierLimits.generations === -1 || user.generations_used_this_month < tierLimits.generations;
+  const queryClient = useQueryClient();
+
+  // Delete project mutation
+  const deleteMutation = useMutation({
+    mutationFn: (projectId: string) => projectsAPI.delete(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+
+  const handleDelete = (e: React.MouseEvent, projectId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this project?')) {
+      deleteMutation.mutate(projectId);
+    }
+  };
+
+  const handleResume = (e: React.MouseEvent, projectId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/projects/new?resume=${projectId}`);
+  };
 
   return (
     <>
@@ -122,14 +147,16 @@ export default function Dashboard() {
           ) : projects && projects.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map((project: any) => (
-                <Link
+                <div
                   key={project.id}
-                  href={`/projects/${project.id}`}
-                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition p-6"
+                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition p-6 relative"
                 >
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    {project.name}
-                  </h3>
+                  <Link href={`/projects/${project.id}`} className="block">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 pr-8">
+                      {project.name}
+                    </h3>
+                  </Link>
+                  
                   <div className="flex items-center space-x-2 mb-3">
                     <span
                       className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -137,24 +164,72 @@ export default function Dashboard() {
                           ? 'bg-green-100 text-green-800'
                           : project.status === 'GENERATED'
                           ? 'bg-blue-100 text-blue-800'
+                          : project.status === 'GENERATING'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : project.status === 'FAILED'
+                          ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}
                     >
                       {project.status}
                     </span>
                     {project.subdomain && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 truncate">
                         {project.subdomain}.thelaunchloop.com
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600">
+                  
+                  <div className="text-sm text-gray-600 mb-4">
                     <p>{project.signups_count} signups</p>
                     <p className="text-xs mt-1">
                       Created {new Date(project.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                </Link>
+
+                  {/* Context-aware actions */}
+                  <div className="flex gap-2 border-t pt-3">
+                    {project.status === 'DRAFT' && (
+                      <button
+                        onClick={(e) => handleResume(e, project.id)}
+                        className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition"
+                      >
+                        📝 Resume
+                      </button>
+                    )}
+                    {(project.status === 'GENERATED' || project.status === 'PUBLISHED') && (
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition text-center"
+                      >
+                        👁️ View
+                      </Link>
+                    )}
+                    {project.status === 'GENERATING' && (
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="flex-1 px-3 py-2 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600 transition text-center"
+                      >
+                        ⏳ Check Status
+                      </Link>
+                    )}
+                    {project.status === 'FAILED' && (
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="flex-1 px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition text-center"
+                      >
+                        🔄 Retry
+                      </Link>
+                    )}
+                    <button
+                      onClick={(e) => handleDelete(e, project.id)}
+                      className="px-3 py-2 border border-red-300 text-red-600 text-sm rounded hover:bg-red-50 transition"
+                      disabled={deleteMutation.isPending}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (

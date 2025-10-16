@@ -212,3 +212,57 @@ async def unpublish_project(
     db.commit()
     
     return {"message": "Project unpublished successfully"}
+
+
+@router.post("/{project_id}/save-state")
+async def save_creation_state(
+    project_id: str,
+    state_data: dict,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Save project creation flow state for persistence"""
+    
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == user.id
+    ).first()
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+    
+    # Save creation state
+    project.creation_state = state_data
+    project.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    return {"message": "State saved successfully"}
+
+
+@router.delete("/{project_id}")
+async def delete_project(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a project"""
+    
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == user.id
+    ).first()
+    
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+    
+    db.delete(project)
+    db.commit()
+    
+    return {"message": "Project deleted successfully"}

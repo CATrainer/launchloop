@@ -1,9 +1,9 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../hooks/useAuth';
-import { useProjects } from '../../hooks/useProjects';
+import { useProjects, useProject } from '../../hooks/useProjects';
 import {
   useExtract,
   useGenerateQuestions,
@@ -12,6 +12,8 @@ import {
 } from '../../hooks/useGeneration';
 import { Toast } from '../../components/shared/Toast';
 import { TierLimitBanner } from '../../components/shared/TierLimitBanner';
+import { projectsAPI } from '../../lib/api';
+import { useMutation } from '@tanstack/react-query';
 
 export default function NewProject() {
   const router = useRouter();
@@ -36,6 +38,50 @@ export default function NewProject() {
   const questionsMutation = useGenerateQuestions();
   const createGenerationMutation = useCreateGeneration();
   const { data: generation } = useGeneration(generationId);
+
+  // State persistence mutation
+  const saveStateMutation = useMutation({
+    mutationFn: (state: any) => projectsAPI.saveState(projectId!, state),
+  });
+
+  // Load existing project if resuming
+  const { data: existingProject } = useProject(router.query.resume as string);
+
+  // Restore state from existing project
+  useEffect(() => {
+    if (existingProject && existingProject.creation_state) {
+      const state = existingProject.creation_state;
+      setProjectId(existingProject.id);
+      setProjectName(existingProject.name);
+      setStep(state.step || 1);
+      setDescription(state.description || '');
+      setExtractedData(state.extracted_data || null);
+      setSelectedTemplate(state.selected_template || null);
+      setQuestions(state.questions || []);
+      setAnswers(state.answers || {});
+      if (state.generation_id) {
+        setGenerationId(state.generation_id);
+      }
+    }
+  }, [existingProject]);
+
+  // Save state whenever it changes (debounced)
+  useEffect(() => {
+    if (projectId && step > 1) {
+      const timer = setTimeout(() => {
+        saveStateMutation.mutate({
+          step,
+          description,
+          extracted_data: extractedData,
+          selected_template: selectedTemplate,
+          questions,
+          answers,
+          generation_id: generationId,
+        });
+      }, 1000); // Debounce 1 second
+      return () => clearTimeout(timer);
+    }
+  }, [projectId, step, description, extractedData, selectedTemplate, questions, answers, generationId]);
 
   const handleCreateProject = () => {
     if (!projectName) return;
@@ -109,17 +155,24 @@ export default function NewProject() {
           setStep(5);
         },
         onError: (error: any) => {
-          const errorMessage = error.response?.data?.detail || 'Failed to start generation. Please try again.';
+          const errorDetail = error.response?.data?.detail;
           
-          // Check if it's a generation limit error
-          if (error.response?.status === 403) {
+          // Check if it's a generation limit error with detailed info
+          if (error.response?.status === 403 && typeof errorDetail === 'object') {
+            const { message, tier, generations_used, generations_limit, usage_reset_date } = errorDetail;
+            const resetDate = usage_reset_date ? new Date(usage_reset_date).toLocaleDateString() : 'next month';
             setToast({
-              message: errorMessage + ' You\'ve reached your monthly generation limit.',
+              message: `${message} (${generations_used}/${generations_limit} used on ${tier} tier). Resets ${resetDate}.`,
+              type: 'error',
+            });
+          } else if (error.response?.status === 403) {
+            setToast({
+              message: (typeof errorDetail === 'string' ? errorDetail : errorDetail?.message) + ' You\'ve reached your monthly generation limit.',
               type: 'error',
             });
           } else {
             setToast({
-              message: errorMessage,
+              message: typeof errorDetail === 'string' ? errorDetail : 'Failed to start generation. Please try again.',
               type: 'error',
             });
           }
