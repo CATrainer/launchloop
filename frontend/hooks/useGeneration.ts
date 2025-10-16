@@ -13,10 +13,18 @@ export function useGeneration(id: string | null) {
     refetchInterval: (query) => {
       // Poll every 2 seconds if generation is in progress
       const data = query.state.data as any;
-      if (data && data.status !== 'COMPLETE' && data.status !== 'FAILED') {
-        return 2000;
+      const error = query.state.error;
+      
+      // Stop polling on error or if no data
+      if (error || !data) return false;
+      
+      // Stop polling when complete or failed
+      if (data.status === 'COMPLETE' || data.status === 'FAILED') {
+        return false;
       }
-      return false;
+      
+      // Continue polling for in-progress generations
+      return 2000;
     },
   });
 }

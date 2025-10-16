@@ -66,3 +66,28 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_settings():
+    """Validate all required settings are present"""
+    required = {
+        'DATABASE_URL': settings.DATABASE_URL,
+        'REDIS_URL': settings.REDIS_URL,
+        'JWT_SECRET': settings.JWT_SECRET,
+        'ANTHROPIC_API_KEY': settings.ANTHROPIC_API_KEY,
+        'OPENAI_API_KEY': settings.OPENAI_API_KEY,
+        'R2_ACCOUNT_ID': settings.R2_ACCOUNT_ID,
+        'R2_ACCESS_KEY_ID': settings.R2_ACCESS_KEY_ID,
+        'R2_SECRET_ACCESS_KEY': settings.R2_SECRET_ACCESS_KEY,
+        'R2_BUCKET_NAME': settings.R2_BUCKET_NAME,
+        'STRIPE_SECRET_KEY': settings.STRIPE_SECRET_KEY,
+        'RESEND_API_KEY': settings.RESEND_API_KEY,
+    }
+    
+    missing = [key for key, value in required.items() if not value]
+    
+    if missing:
+        raise RuntimeError(
+            f"❌ Missing required environment variables: {', '.join(missing)}\n"
+            f"Please check your .env file"
+        )

@@ -28,36 +28,58 @@ async def retry_generation(
 ):
     """Retry a failed generation"""
     
-    generation = db.query(Generation).filter(Generation.id == generation_id).first()
+    # Rate limit retries: 3 per generation per hour
+    check_rate_limit(
+        f"{user.id}_{generation_id}",
+        "retry_generation",
+        max_count=3,
+        window_minutes=60
+    )
+    
+    logger.info("Generation retry initiated", extra={
+        "generation_id": generation_id,
+        "user_id": user.id
+    })
+    
+    # Query with ownership check via join (security)
+    generation = db.query(Generation).join(Project).filter(
+        Generation.id == generation_id,
+        Project.user_id == user.id
+    ).first()
+    
     if not generation:
+        logger.warning("Generation retry denied - not found or unauthorized", extra={
+            "generation_id": generation_id,
+            "user_id": user.id
+        })
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Generation not found"
-        )
-    
-    # Verify ownership
-    project = db.query(Project).filter(Project.id == generation.project_id).first()
-    if not project or project.user_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized"
+            detail="Generation not found or access denied"
         )
     
     # Can only retry failed generations
-    if generation.status != "FAILED":
+    if generation.status != GenerationStatus.FAILED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Can only retry failed generations"
+            detail=f"Can only retry failed generations. Current status: {generation.status}"
         )
     
+    previous_error = generation.error_message
+    
     # Reset generation status
-    generation.status = "PENDING"
+    generation.status = GenerationStatus.PENDING
     generation.progress = 0
     generation.error_message = None
     db.commit()
     
     # Queue task
     process_generation.delay(generation.id)
+    
+    logger.info("Generation retry queued", extra={
+        "generation_id": generation_id,
+        "user_id": user.id,
+        "previous_error": previous_error
+    })
     
     return {"message": "Generation retrying", "generation_id": generation.id}
 

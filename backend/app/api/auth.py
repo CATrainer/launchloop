@@ -9,6 +9,7 @@ from app.models.user import User
 from app.tasks.email import send_welcome_email
 from app.utils.validators import validate_email
 from app.utils.logger import get_logger
+from app.config import settings
 
 logger = get_logger(__name__)
 
@@ -52,13 +53,15 @@ async def signup(
     token = create_user_token(user)
     
     # Set HTTP-only cookie
+    # secure=True only in production (requires HTTPS)
     response.set_cookie(
         key="token",
         value=token,
         httponly=True,
-        secure=True,
+        secure=settings.ENV == "production",  # Only HTTPS in production
         samesite="lax",
-        max_age=7 * 24 * 60 * 60  # 7 days
+        max_age=7 * 24 * 60 * 60,  # 7 days
+        domain=None  # Let browser handle it
     )
     
     # Send welcome email (async task)
@@ -95,13 +98,15 @@ async def login(
     token = create_user_token(user)
     
     # Set HTTP-only cookie
+    # secure=True only in production (requires HTTPS)
     response.set_cookie(
         key="token",
         value=token,
         httponly=True,
-        secure=True,
+        secure=settings.ENV == "production",  # Only HTTPS in production
         samesite="lax",
-        max_age=7 * 24 * 60 * 60  # 7 days
+        max_age=7 * 24 * 60 * 60,  # 7 days
+        domain=None  # Let browser handle it
     )
     
     return user
@@ -111,8 +116,12 @@ async def login(
 async def logout(response: Response):
     """Log out a user"""
     
-    # Clear cookie
-    response.delete_cookie(key="token")
+    # Clear cookie with same parameters as when it was set
+    response.delete_cookie(
+        key="token",
+        domain=None,
+        path="/"
+    )
     
     return {"message": "Logged out successfully"}
 

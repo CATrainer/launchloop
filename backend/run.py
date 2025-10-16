@@ -53,6 +53,19 @@ def run_command(cmd, description):
         return False
 
 
+def validate_environment():
+    """Validate environment variables."""
+    print("\n🔍 Validating environment variables...")
+    try:
+        from app.config import validate_settings
+        validate_settings()
+        print("✅ Environment validation successful")
+        return True
+    except Exception as e:
+        print(f"❌ Environment validation failed: {e}")
+        return False
+
+
 def check_database_connection():
     """Check if database is accessible."""
     print("\n🔍 Checking database connection...")
@@ -68,6 +81,45 @@ def check_database_connection():
     except Exception as e:
         print(f"❌ Database connection failed: {e}")
         return False
+
+
+def check_migrations():
+    """Check if database migrations are up to date."""
+    if RUN_MIGRATIONS:
+        print("\n⏭️  Skipping migration check (migrations will run)")
+        return True
+    
+    print("\n🔍 Checking migration status...")
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+        from alembic.runtime.migration import MigrationContext
+        from app.config import settings
+        from sqlalchemy import create_engine
+        
+        # Create Alembic config
+        alembic_cfg = Config("alembic.ini")
+        script = ScriptDirectory.from_config(alembic_cfg)
+        
+        # Get current and head revisions
+        engine = create_engine(settings.DATABASE_URL)
+        with engine.begin() as connection:
+            context = MigrationContext.configure(connection)
+            current_rev = context.get_current_revision()
+            head_rev = script.get_current_head()
+            
+            if current_rev != head_rev:
+                print(f"⚠️  Database migrations are out of date!")
+                print(f"   Current: {current_rev}")
+                print(f"   Latest: {head_rev}")
+                print(f"   Set RUN_MIGRATIONS=True or run: alembic upgrade head")
+                return False
+        
+        print("✅ Database migrations are up to date")
+        return True
+    except Exception as e:
+        print(f"⚠️  Could not check migrations: {e}")
+        return True  # Don't block startup
 
 
 def run_migrations():
@@ -165,16 +217,25 @@ def main():
     env = os.getenv("ENV", "development")
     print(f"🌍 Environment: {env}")
     
+    # Step 0: Validate environment variables
+    if not validate_environment():
+        print("\n❌ Cannot proceed with invalid environment")
+        sys.exit(1)
+    
     # Step 1: Check database connection
     if not check_database_connection():
         print("\n❌ Cannot proceed without database connection")
         sys.exit(1)
     
-    # Step 2: Run migrations
+    # Step 2: Check migrations are up to date
+    if not check_migrations():
+        print("\n⚠️  Migrations out of date - recommend running migrations")
+    
+    # Step 3: Run migrations (if enabled)
     if not run_migrations():
         print("\n⚠️  Migrations failed, but continuing...")
     
-    # Step 3: Seed database
+    # Step 4: Seed database
     if not seed_database():
         print("\n⚠️  Seeding failed, but continuing...")
     
