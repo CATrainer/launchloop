@@ -5,7 +5,7 @@ from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.models.project import Project
-from app.schemas.generation import GenerationCreate, GenerationResponse, ExtractionRequest, QuestionRequest
+from app.schemas.generation import GenerationCreate, GenerationResponse, ExtractionResponse, QuestionResponse
 from app.services.generation import generation_service
 from app.services.templates import template_registry
 from app.services.llm import llm_service
