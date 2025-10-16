@@ -15,7 +15,16 @@ async def subdomain_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
     
-    host = request.headers.get("host", "")
+    # Check X-Forwarded-Host first (set by Cloudflare Worker)
+    # This preserves the original subdomain when proxied through api.thelaunchloop.com
+    host = request.headers.get("x-forwarded-host", "") or request.headers.get("host", "")
+    
+    logger.debug("Subdomain middleware processing", extra={
+        "host": host,
+        "x_forwarded_host": request.headers.get("x-forwarded-host"),
+        "original_host": request.headers.get("host"),
+        "path": request.url.path
+    })
     
     # Check if this is the main domain or API subdomain
     main_domains = [
