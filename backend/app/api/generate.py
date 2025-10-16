@@ -126,6 +126,10 @@ async def create_generation(
     )
     
     if not can_generate:
+        print(f"❌ Generation blocked for user {user.id} (tier: {user.tier.value})")
+        print(f"   Reason: {error_msg}")
+        print(f"   Generations used: {user.generations_used_this_month}")
+        print(f"   Revisions used: {user.revisions_used_this_month}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=error_msg

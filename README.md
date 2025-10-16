@@ -316,6 +316,18 @@ After deployment, verify:
   2. Add additional domains to `CORS_ORIGINS` if you have multiple frontends (comma-separated)
   3. Redeploy backend after updating environment variables
 
+### Generation Limit Reached (403 Forbidden)
+- **Issue:** "Generate Landing Page" returns 403 Forbidden
+- **Cause:** User has reached their tier's monthly generation limit
+- **Tier Limits:**
+  - **Free:** 1 generation/month, 10 revisions/month
+  - **Pro:** 5 generations/month, unlimited revisions
+  - **Ultimate:** Unlimited generations and revisions
+- **Fix:**
+  1. Check user status: `railway run --service backend python scripts/check_user.py user@example.com`
+  2. Upgrade tier: `railway run --service backend python scripts/upgrade_user.py user@example.com pro`
+  3. Or wait until monthly reset (1st of next month)
+
 ---
 
 ## Architecture
@@ -485,6 +497,12 @@ railway run --service backend python scripts/create_admin.py email@example.com
 
 # Seed test data
 railway run --service backend python scripts/seed.py
+
+# Check user status and usage limits
+railway run --service backend python scripts/check_user.py user@example.com
+
+# Upgrade user tier (free/pro/ultimate)
+railway run --service backend python scripts/upgrade_user.py user@example.com pro
 
 # Check service status
 railway status
