@@ -15,20 +15,44 @@ class LLMService:
     def extract_product_info(self, user_input: str) -> Dict[str, Any]:
         """Extract structured information from user's product description"""
         
-        prompt = f"""Extract structured information from this product description:
+        prompt = f"""You are an expert at understanding product ideas. Extract structured information from this product description:
 
 "{user_input}"
 
+CRITICAL RULES:
+1. If the user mentions ANY problem or pain point, extract it
+2. If the user mentions ANY solution or approach, extract it
+3. Be generous with interpretation - infer from context
+4. NEVER return "Unknown" - always extract SOMETHING from the text
+5. If truly unclear, ask for clarification by lowering completeness_score
+
+Examples of good extraction:
+Input: "helps developers deploy faster"
+→ problem: "developers spend too long deploying apps"
+→ solution: "streamlined deployment process"
+
+Input: "app for founders to focus on important tasks"
+→ problem: "founders waste time on low-value tasks"
+→ solution: "task prioritization system that highlights most important work"
+
 Return ONLY valid JSON with this exact structure:
 {{
-  "product_type": "b2b_saas or b2c or marketplace or tool",
-  "target_audience": "specific audience",
-  "problem": "problem being solved",
-  "solution_approach": "how it's solved",
-  "stage": "idea or building or beta or launched",
+  "product_type": "b2b_saas" | "b2c" | "marketplace" | "tool",
+  "target_audience": "specific audience (be specific, e.g. 'early-stage SaaS founders')",
+  "problem": "clear problem statement (NEVER 'Unknown problem')",
+  "solution_approach": "how it's solved (NEVER 'Unknown solution')",
+  "stage": "idea" | "building" | "beta" | "launched",
   "founder_background": "relevant experience or null",
-  "completeness_score": 0.0-1.0
-}}"""
+  "completeness_score": 0.0-1.0,
+  "value_prop_headline": "if clear from description, extract it",
+  "missing_info": ["list", "of", "missing", "details"] or []
+}}
+
+Score guidance:
+- 0.8-1.0: Problem, solution, audience all clear
+- 0.5-0.7: Most info present, some details missing
+- 0.3-0.4: Basic idea clear but needs lots of details
+- <0.3: Very unclear, need much more info"""
         
         try:
             message = self.client.messages.create(
@@ -38,18 +62,31 @@ Return ONLY valid JSON with this exact structure:
             )
             
             response_text = message.content[0].text
-            return json.loads(response_text)
+            
+            # Log what we got back
+            print(f"📊 Extraction response: {response_text}")
+            
+            extracted = json.loads(response_text)
+            
+            # Validate we didn't get "Unknown" values
+            if "Unknown" in extracted.get("problem", "") or "Unknown" in extracted.get("solution_approach", ""):
+                print(f"⚠️ Got 'Unknown' in extraction, this should not happen!")
+                print(f"   User input was: {user_input}")
+            
+            return extracted
         
         except Exception as e:
-            # Return default extraction on error
+            print(f"❌ Extraction failed: {e}")
+            # Return default extraction on error - but with user input as context
             return {
                 "product_type": "b2b_saas",
-                "target_audience": "founders",
-                "problem": "Unknown problem",
-                "solution_approach": "Unknown solution",
+                "target_audience": "users",
+                "problem": f"Needs more detail about the problem being solved",
+                "solution_approach": f"Needs more detail about the solution",
                 "stage": "idea",
                 "founder_background": None,
-                "completeness_score": 0.3
+                "completeness_score": 0.2,
+                "missing_info": ["problem description", "solution details", "target audience"]
             }
     
     def generate_questions(
