@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Tuple
 
 
 RESERVED_SUBDOMAINS = [
@@ -48,6 +48,45 @@ def validate_copy_content(text: str) -> tuple[bool, List[str]]:
     return len(violations) == 0, violations
 
 
+def validate_email(email: str) -> Tuple[bool, str]:
+    """Validate email address"""
+    if not email:
+        return False, "Email is required"
+    
+    # Basic format check
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, email):
+        return False, "Invalid email format"
+    
+    # Check length
+    if len(email) > 254:  # RFC 5321
+        return False, "Email too long"
+    
+    # Check for common typos
+    common_domains = {
+        "gmial.com": "gmail.com",
+        "gmai.com": "gmail.com",
+        "yahooo.com": "yahoo.com",
+        "hotmial.com": "hotmail.com",
+    }
+    
+    domain = email.split('@')[1] if '@' in email else ""
+    if domain.lower() in common_domains:
+        suggested = email.split('@')[0] + '@' + common_domains[domain.lower()]
+        return False, f"Did you mean {suggested}?"
+    
+    # Block disposable/temporary email domains
+    disposable_domains = [
+        "tempmail.com", "10minutemail.com", "guerrillamail.com",
+        "mailinator.com", "throwaway.email", "trashmail.com"
+    ]
+    
+    if domain.lower() in disposable_domains:
+        return False, "Temporary email addresses are not allowed"
+    
+    return True, email.lower()  # Return normalized email
+
+
 def sanitize_input(text: str, max_length: int = 10000) -> str:
     """Sanitize user input"""
     if not text:
@@ -59,4 +98,16 @@ def sanitize_input(text: str, max_length: int = 10000) -> str:
     # Remove null bytes
     text = text.replace('\x00', '')
     
+    # Remove other control characters
+    text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
+    
     return text.strip()
+
+
+def sanitize_html(text: str) -> str:
+    """Remove all HTML tags from text"""
+    # Remove HTML tags
+    clean = re.sub(r'<[^>]+>', '', text)
+    # Remove HTML entities
+    clean = re.sub(r'&[a-zA-Z]+;', '', clean)
+    return clean.strip()

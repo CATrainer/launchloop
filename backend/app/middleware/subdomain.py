@@ -3,6 +3,10 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from app.models.project import Project, ProjectStatus
 from app.config import settings
+from app.services.cache import cache_service
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 async def subdomain_middleware(request: Request, call_next):
@@ -31,7 +35,13 @@ async def subdomain_middleware(request: Request, call_next):
     
     subdomain = parts[0]
     
-    # Check if it's a published project
+    # Try to get from cache first
+    cached_html = cache_service.get_cached_project_html(subdomain)
+    if cached_html:
+        logger.debug("Serving project from cache", extra={"subdomain": subdomain})
+        return HTMLResponse(content=cached_html)
+    
+    # Cache miss - query database
     from app.database import SessionLocal
     db = SessionLocal()
     try:
@@ -50,7 +60,15 @@ async def subdomain_middleware(request: Request, call_next):
             ).first()
         
         if project and project.html_content:
+            # Cache for 1 hour
+            cache_service.cache_project_html(subdomain, project.html_content, ttl=3600)
+            logger.info("Project loaded and cached", extra={
+                "subdomain": subdomain,
+                "project_id": project.id
+            })
             return HTMLResponse(content=project.html_content)
+        else:
+            logger.debug("No project found for subdomain", extra={"subdomain": subdomain})
         
     finally:
         db.close()

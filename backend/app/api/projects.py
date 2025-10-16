@@ -8,7 +8,11 @@ from app.models.user import User
 from app.models.project import Project, ProjectStatus
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectListResponse
 from app.utils.helpers import generate_uuid
-from app.utils.validators import validate_subdomain
+from app.utils.validators import validate_subdomain, sanitize_input
+from app.services.cache import cache_service
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -21,16 +25,21 @@ async def create_project(
 ):
     """Create a new project"""
     
+    # Sanitize input
+    name = sanitize_input(project_data.name, max_length=200)
+    
     project = Project(
         id=generate_uuid(),
         user_id=user.id,
-        name=project_data.name,
+        name=name,
         status=ProjectStatus.DRAFT
     )
     
     db.add(project)
     db.commit()
     db.refresh(project)
+    
+    logger.info("Project created", extra={"project_id": project.id, "user_id": user.id})
     
     return project
 
@@ -185,6 +194,16 @@ async def publish_project(
     
     db.commit()
     
+    # Cache the HTML for fast serving
+    if project.html_content:
+        cache_service.cache_project_html(project.subdomain, project.html_content)
+    
+    logger.info("Project published", extra={
+        "project_id": project.id,
+        "subdomain": project.subdomain,
+        "user_id": user.id
+    })
+    
     return {"message": "Project published successfully"}
 
 
@@ -210,6 +229,17 @@ async def unpublish_project(
     project.status = ProjectStatus.GENERATED
     
     db.commit()
+    
+    # Invalidate cache
+    if project.subdomain:
+        cache_service.invalidate_project_cache(subdomain=project.subdomain)
+    if project.custom_domain:
+        cache_service.invalidate_project_cache(domain=project.custom_domain)
+    
+    logger.info("Project unpublished", extra={
+        "project_id": project.id,
+        "user_id": user.id
+    })
     
     return {"message": "Project unpublished successfully"}
 

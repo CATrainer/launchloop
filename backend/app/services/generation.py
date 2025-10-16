@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 from datetime import datetime
+import html
 from app.models.project import Project, ProjectStatus
 from app.models.generation import Generation, GenerationType, GenerationStatus
 from app.models.user import User
@@ -9,6 +10,9 @@ from app.services.llm import llm_service
 from app.services.images import image_service
 from app.services.storage import storage_service
 from app.utils.helpers import generate_uuid, get_tier_limits, should_reset_usage, get_usage_reset_date
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class GenerationService:
@@ -114,23 +118,31 @@ class GenerationService:
     ) -> str:
         """Assemble final HTML from template and generated content"""
         
-        html = template_html
+        html_content = template_html
         
-        # Replace copy variables
+        # Replace copy variables with HTML-escaped content
         for key, value in generated_copy.items():
             placeholder = "{{" + key.upper() + "}}"
-            html = html.replace(placeholder, str(value))
+            # Escape HTML special characters to prevent XSS
+            escaped_value = html.escape(str(value))
+            html_content = html_content.replace(placeholder, escaped_value)
         
-        # Replace image URLs
+        # Replace image URLs (URLs are safe, from our own R2 storage)
         for img in images:
             placeholder = "{{IMAGE_" + img["id"].upper() + "}}"
             if img["status"] == "success" and img.get("r2_url"):
-                html = html.replace(placeholder, img["r2_url"])
+                # Image URLs come from our storage, already safe
+                html_content = html_content.replace(placeholder, img["r2_url"])
             else:
                 # Use placeholder image
-                html = html.replace(placeholder, "/placeholder.png")
+                html_content = html_content.replace(placeholder, "/placeholder.png")
         
-        return html
+        logger.debug("HTML assembly complete", extra={
+            "copy_fields": len(generated_copy),
+            "images": len(images)
+        })
+        
+        return html_content
     
     def complete_generation(
         self,
@@ -166,6 +178,12 @@ class GenerationService:
         project.status = ProjectStatus.GENERATED
         
         db.commit()
+        
+        logger.info("Generation completed", extra={
+            "generation_id": generation_id,
+            "project_id": project.id,
+            "total_cost": round(total_cost, 4)
+        })
 
 
 # Global service instance

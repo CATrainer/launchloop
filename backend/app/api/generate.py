@@ -1,22 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from typing import List
+import json
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.models.project import Project
-from app.models.generation import Generation
-from app.schemas.generation import (
-    GenerationCreate,
-    GenerationResponse,
-    QuestionResponse,
-    ExtractionResponse
-)
+from app.schemas.generation import GenerationCreate, GenerationResponse, ExtractionRequest, QuestionRequest
 from app.services.generation import generation_service
-from app.services.llm import llm_service
 from app.services.templates import template_registry
+from app.services.llm import llm_service
 from app.tasks.generation import process_generation
-import json
+from app.utils.logger import get_logger
+from app.middleware.rate_limit import check_rate_limit
+from app.models.generation import Generation, GenerationStatus
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -136,18 +134,29 @@ async def create_generation(
     
     # Get raw body for debugging
     body = await request.json()
-    print(f"🔍 RAW Generation request body:")
-    print(json.dumps(body, indent=2))
+    logger.debug("Generation request received", extra={
+        "project_id": body.get('project_id'),
+        "template_id": body.get('template_id'),
+        "type": body.get('type')
+    })
     
     # Parse with Pydantic
     try:
         generation_data = GenerationCreate(**body)
     except Exception as e:
-        print(f"❌ Validation error: {e}")
+        logger.error("Generation request validation error", extra={"error": str(e)})
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
+    
+    # Rate limiting: 3 generations per hour to prevent abuse
+    check_rate_limit(
+        user.id,
+        "generation",
+        max_count=3,
+        window_minutes=60
+    )
     
     # Get project
     project = db.query(Project).filter(
@@ -161,6 +170,25 @@ async def create_generation(
             detail="Project not found"
         )
     
+    # Check for pending/running generations (idempotency)
+    pending_generation = db.query(Generation).filter(
+        Generation.project_id == project.id,
+        Generation.status.in_([
+            GenerationStatus.PENDING,
+            GenerationStatus.ANALYZING,
+            GenerationStatus.GENERATING_COPY,
+            GenerationStatus.GENERATING_IMAGES,
+            GenerationStatus.ASSEMBLING
+        ])
+    ).first()
+    
+    if pending_generation:
+        logger.info("Returning existing pending generation", extra={
+            "generation_id": pending_generation.id,
+            "user_id": user.id
+        })
+        return pending_generation
+    
     # Check if user can generate
     can_generate, error_msg = generation_service.can_user_generate(
         user,
@@ -168,10 +196,13 @@ async def create_generation(
     )
     
     if not can_generate:
-        print(f"❌ Generation blocked for user {user.id} (tier: {user.tier.value})")
-        print(f"   Reason: {error_msg}")
-        print(f"   Generations used: {user.generations_used_this_month}")
-        print(f"   Revisions used: {user.revisions_used_this_month}")
+        logger.warning("Generation blocked - limit reached", extra={
+            "user_id": user.id,
+            "tier": user.tier.value,
+            "reason": error_msg,
+            "generations_used": user.generations_used_this_month,
+            "revisions_used": user.revisions_used_this_month
+        })
         
         # Get tier limits for better error message
         from app.utils.helpers import get_tier_limits
@@ -202,6 +233,13 @@ async def create_generation(
     
     # Queue background task
     process_generation.delay(generation.id)
+    
+    logger.info("Generation queued", extra={
+        "generation_id": generation.id,
+        "project_id": project.id,
+        "user_id": user.id,
+        "type": generation_data.type.value
+    })
     
     return generation
 

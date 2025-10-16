@@ -4,7 +4,10 @@ from typing import Optional
 from app.database import get_db
 from app.models.user import User, Role
 from app.utils.jwt import decode_access_token
+from app.utils.logger import get_logger
 from datetime import datetime
+
+logger = get_logger(__name__)
 
 
 def get_current_user(
@@ -36,14 +39,14 @@ def get_current_user(
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
+        logger.warning("User not found for valid token", extra={"user_id": user_id})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
     
-    # Update last active
-    user.last_active_at = datetime.utcnow()
-    db.commit()
+    # NOTE: We don't update last_active_at on every request for performance
+    # Instead, update it periodically via a background task or on important actions
     
     return user
 

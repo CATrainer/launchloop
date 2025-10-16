@@ -7,6 +7,10 @@ from app.middleware.auth import get_current_user
 from app.middleware.rate_limit import check_rate_limit, get_client_ip
 from app.models.user import User
 from app.tasks.email import send_welcome_email
+from app.utils.validators import validate_email
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -20,9 +24,26 @@ async def signup(
 ):
     """Sign up a new user"""
     
+    # Validate email
+    is_valid, email_or_error = validate_email(user_data.email)
+    if not is_valid:
+        logger.warning("Signup blocked - invalid email", extra={
+            "email": user_data.email,
+            "error": email_or_error
+        })
+        raise HTTPException(
+            status_code=400,
+            detail=email_or_error
+        )
+    
+    # Use normalized email
+    user_data.email = email_or_error
+    
     # Rate limiting
     client_ip = get_client_ip(request)
     check_rate_limit(client_ip, "signup", max_count=10, window_minutes=1440)  # 10 per day
+    
+    logger.info("User signup initiated", extra={"email": user_data.email})
     
     # Create user
     user = create_user(db, user_data)
@@ -43,6 +64,8 @@ async def signup(
     # Send welcome email (async task)
     send_welcome_email.delay(user.email)
     
+    logger.info("User signup complete", extra={"user_id": user.id, "email": user.email})
+    
     return user
 
 
@@ -54,8 +77,19 @@ async def login(
 ):
     """Log in a user"""
     
+    # Validate email format
+    is_valid, email_or_error = validate_email(credentials.email)
+    if not is_valid:
+        # Don't reveal if email is invalid, just say credentials are wrong
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+    
     # Authenticate user
-    user = authenticate_user(db, credentials.email, credentials.password)
+    user = authenticate_user(db, email_or_error, credentials.password)
+    
+    logger.info("User login successful", extra={"user_id": user.id})
     
     # Create JWT token
     token = create_user_token(user)

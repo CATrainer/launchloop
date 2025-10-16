@@ -1,9 +1,12 @@
 import anthropic
 import json
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from app.config import settings
 from app.utils.validators import validate_copy_content
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class LLMService:
@@ -65,19 +68,22 @@ Score guidance:
             response_text = message.content[0].text
             
             # Log what we got back
-            print(f"📊 Extraction response: {response_text}")
+            logger.info("Product info extraction complete", extra={"response_length": len(response_text)})
             
             extracted = json.loads(response_text)
             
             # Validate we didn't get "Unknown" values
             if "Unknown" in extracted.get("problem", "") or "Unknown" in extracted.get("solution_approach", ""):
-                print(f"⚠️ Got 'Unknown' in extraction, this should not happen!")
-                print(f"   User input was: {user_input}")
+                logger.warning("Extraction returned 'Unknown' values", extra={
+                    "problem": extracted.get("problem"),
+                    "solution": extracted.get("solution_approach"),
+                    "input_length": len(user_input)
+                })
             
             return extracted
         
         except Exception as e:
-            print(f"❌ Extraction failed: {e}")
+            logger.error("Product info extraction failed", extra={"error": str(e)}, exc_info=True)
             # Return default extraction on error - but with user input as context
             return {
                 "product_type": "b2b_saas",
@@ -139,7 +145,7 @@ Return ONLY valid JSON array: [{{"field": "...", "question": "...", "example": "
         template_config: Dict,
         input_data: Dict[str, Any],
         retry: bool = False
-    ) -> Dict[str, Any]:
+    ) -> Tuple[Dict[str, Any], float]:
         """Generate landing page copy"""
         
         required_fields = template_config.get('required_fields', [])
@@ -195,18 +201,29 @@ Now generate the copy (JSON only, no markdown):"""
             
             response_text = message.content[0].text
             
-            # Log raw response for debugging
-            print(f"🎨 Claude raw response (first 500 chars): {response_text[:500]}")
+            # Calculate API cost
+            # Claude Sonnet: $3/1M input tokens, $15/1M output tokens
+            input_cost = (message.usage.input_tokens / 1_000_000) * 3
+            output_cost = (message.usage.output_tokens / 1_000_000) * 15
+            total_cost = input_cost + output_cost
+            
+            logger.info("Claude copy generation complete", extra={
+                "input_tokens": message.usage.input_tokens,
+                "output_tokens": message.usage.output_tokens,
+                "cost_usd": round(total_cost, 4),
+                "response_length": len(response_text)
+            })
             
             # Try to extract JSON from response (handle markdown wrapping)
             generated_copy = self._extract_json_from_text(response_text)
             
             if not generated_copy:
-                print(f"❌ Failed to extract JSON from response")
-                print(f"   Full response: {response_text}")
+                logger.error("Failed to extract JSON from Claude response", extra={
+                    "response_preview": response_text[:500]
+                })
                 raise Exception("Could not extract valid JSON from Claude response")
             
-            print(f"✅ Extracted JSON with {len(generated_copy)} fields")
+            logger.debug("JSON extraction successful", extra={"field_count": len(generated_copy)})
             
             # Validate all fields
             all_valid = True
@@ -216,17 +233,22 @@ Now generate the copy (JSON only, no markdown):"""
                 if not is_valid:
                     all_valid = False
                     violations_found.extend(violations)
-                    print(f"⚠️ Validation failed for field '{field}': {violations}")
+                    logger.warning("Copy validation failed", extra={
+                        "field": field,
+                        "violations": violations
+                    })
             
             # If validation fails and this isn't a retry, try once more
             if not all_valid and not retry:
-                print(f"🔄 Retrying generation due to validation failures: {violations_found}")
+                logger.info("Retrying generation due to validation failures", extra={
+                    "violations": violations_found
+                })
                 return self.generate_copy(template_config, input_data, retry=True)
             
-            return generated_copy
+            return generated_copy, total_cost
         
         except Exception as e:
-            print(f"❌ Copy generation failed: {str(e)}")
+            logger.error("Copy generation failed", extra={"error": str(e)}, exc_info=True)
             raise Exception(f"Failed to generate copy: {str(e)}")
     
     def _extract_json_from_text(self, text: str) -> Optional[Dict[str, Any]]:

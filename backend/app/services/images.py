@@ -1,8 +1,11 @@
 import openai
 import requests
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.config import settings
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ImageService:
@@ -57,6 +60,8 @@ class ImageService:
             
             image_url = response.data[0].url
             
+            logger.debug("Image generated successfully", extra={"image_id": image_id})
+            
             return {
                 "id": image_id,
                 "url": image_url,
@@ -67,7 +72,16 @@ class ImageService:
         except Exception as e:
             # Retry once if first attempt fails
             if not retry:
+                logger.warning("Image generation failed, retrying", extra={
+                    "image_id": image_id,
+                    "error": str(e)
+                })
                 return self.generate_single_image(prompt, image_id, retry=True)
+            
+            logger.error("Image generation failed after retry", extra={
+                "image_id": image_id,
+                "error": str(e)
+            })
             
             return {
                 "id": image_id,
@@ -82,7 +96,7 @@ class ImageService:
         image_specs: List[Dict[str, Any]],
         input_data: Dict[str, Any],
         generated_copy: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    ) -> Tuple[List[Dict[str, Any]], float]:
         """Generate multiple images in parallel"""
         
         results = []
@@ -111,7 +125,20 @@ class ImageService:
         spec_ids = [spec.get("id") for spec in image_specs]
         results.sort(key=lambda x: spec_ids.index(x["id"]))
         
-        return results
+        # Calculate cost
+        # DALL-E 3: $0.04 per 1024x1024 standard quality image
+        cost_per_image = 0.04
+        successful_images = sum(1 for r in results if r["status"] == "success")
+        total_cost = successful_images * cost_per_image
+        
+        logger.info("Image generation batch complete", extra={
+            "total_images": len(results),
+            "successful": successful_images,
+            "failed": len(results) - successful_images,
+            "total_cost": round(total_cost, 4)
+        })
+        
+        return results, total_cost
     
     def download_image(self, url: str) -> bytes:
         """Download image from URL"""
