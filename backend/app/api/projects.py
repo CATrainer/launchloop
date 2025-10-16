@@ -227,6 +227,7 @@ async def unpublish_project(
         )
     
     project.status = ProjectStatus.GENERATED
+    project.published_at = None  # Clear published timestamp
     
     db.commit()
     

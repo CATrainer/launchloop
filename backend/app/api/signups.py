@@ -36,15 +36,16 @@ async def create_signup(
         )
     
     # Find project by subdomain
+    # Check published_at instead of status, since status can be 'GENERATED' while still published
     project = db.query(Project).filter(
         Project.subdomain == subdomain,
-        Project.status == ProjectStatus.PUBLISHED
+        Project.published_at.isnot(None)  # Check if published
     ).first()
     
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found"
+            detail="Landing page not found or not published"
         )
     
     # Create signup

@@ -137,9 +137,13 @@ export default function ProjectDetail() {
     );
   }
 
-  const isPublished = project.status === 'PUBLISHED';
+  // Check if published by looking at published_at, not status
+  // Status can be 'GENERATED' but project can still be published
+  const isPublished = !!project.published_at;
   const projectUrl = project.subdomain
     ? `https://${project.subdomain}.thelaunchloop.com`
+    : project.custom_domain
+    ? `https://${project.custom_domain}`
     : null;
 
   return (
@@ -388,12 +392,12 @@ export default function ProjectDetail() {
                   </div>
                 )}
 
-                {/* Signups Section */}
-                {isPublished && (
+                {/* Signups Section - Always show if page has content */}
+                {project.html_content && (
                   <div className="mb-6">
                     <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-bold">Signups</h2>
-                      {signups && signups.length > 0 && (
+                      <h2 className="text-xl font-bold">Email Signups</h2>
+                      {isPublished && signups && signups.length > 0 && (
                         <button
                           onClick={() => exportMutation.mutate()}
                           disabled={exportMutation.isPending}
@@ -403,7 +407,18 @@ export default function ProjectDetail() {
                         </button>
                       )}
                     </div>
-                    {signups && signups.length > 0 ? (
+                    
+                    {!isPublished ? (
+                      <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                        <p className="text-gray-600 mb-2">📧 Email collection ready</p>
+                        <p className="text-sm text-gray-500 mb-3">
+                          Publish your page to start collecting signups
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          Emails will appear here once your page is live
+                        </p>
+                      </div>
+                    ) : signups && signups.length > 0 ? (
                       <div className="border rounded-lg overflow-hidden">
                         <table className="w-full">
                           <thead className="bg-gray-50">
@@ -419,7 +434,7 @@ export default function ProjectDetail() {
                           <tbody className="divide-y">
                             {signups.map((signup: any) => (
                               <tr key={signup.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 text-sm">{signup.email}</td>
+                                <td className="px-4 py-3 text-sm font-medium">{signup.email}</td>
                                 <td className="px-4 py-3 text-sm text-gray-600">
                                   {new Date(signup.created_at).toLocaleString()}
                                 </td>
@@ -429,10 +444,13 @@ export default function ProjectDetail() {
                         </table>
                       </div>
                     ) : (
-                      <div className="text-center py-12 border rounded-lg bg-gray-50">
-                        <p className="text-gray-600 mb-2">📭 No signups yet</p>
-                        <p className="text-sm text-gray-500">
-                          Share your page to start collecting emails
+                      <div className="text-center py-12 border rounded-lg bg-blue-50 border-blue-200">
+                        <p className="text-blue-900 mb-2 font-medium">📭 No signups yet</p>
+                        <p className="text-sm text-blue-700 mb-3">
+                          Your page is live at {projectUrl}
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          Share your link to start collecting emails!
                         </p>
                       </div>
                     )}
