@@ -19,7 +19,8 @@ async def subdomain_middleware(request: Request, call_next):
     # This preserves the original subdomain when proxied through api.thelaunchloop.com
     host = request.headers.get("x-forwarded-host", "") or request.headers.get("host", "")
     
-    logger.debug("Subdomain middleware processing", extra={
+    # Log at INFO level so we can see it in Railway logs
+    logger.info("Subdomain middleware processing", extra={
         "host": host,
         "x_forwarded_host": request.headers.get("x-forwarded-host"),
         "original_host": request.headers.get("host"),
@@ -35,14 +36,17 @@ async def subdomain_middleware(request: Request, call_next):
     ]
     
     if any(domain in host for domain in main_domains):
+        logger.info("Host matches main domain, skipping subdomain routing", extra={"host": host})
         return await call_next(request)
     
     # Extract subdomain
     parts = host.split(".")
     if len(parts) < 2:
+        logger.info("No subdomain detected, skipping", extra={"host": host})
         return await call_next(request)
     
     subdomain = parts[0]
+    logger.info("Extracted subdomain", extra={"subdomain": subdomain, "host": host})
     
     # Try to get from cache first
     cached_html = cache_service.get_cached_project_html(subdomain)
@@ -77,7 +81,7 @@ async def subdomain_middleware(request: Request, call_next):
             })
             return HTMLResponse(content=project.html_content)
         else:
-            logger.debug("No project found for subdomain", extra={"subdomain": subdomain})
+            logger.info("No project found for subdomain", extra={"subdomain": subdomain, "host": host})
         
     finally:
         db.close()
