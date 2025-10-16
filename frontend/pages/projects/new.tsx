@@ -112,28 +112,7 @@ export default function NewProject() {
       onSuccess: (response) => {
         const extracted = response.data;
         setExtractedData(extracted);
-        
-        // QUALITY GATE: Check if extraction is good enough to proceed
-        const completeness = extracted.completeness_score || 0;
-        
-        if (completeness < 0.5) {
-          // Data quality too low - don't proceed, ask for more detail
-          setToast({
-            message: `We need more details to create a good landing page. Please describe: ${extracted.missing_info?.join(', ') || 'your product problem, solution, and target audience'}`,
-            type: 'warning',
-          });
-          // Stay on step 2, don't proceed
-        } else if (completeness < 0.7) {
-          // Okay quality but could be better - warn but allow proceeding
-          setToast({
-            message: 'We have enough to proceed, but more details would help create a better landing page.',
-            type: 'info',
-          });
-          setStep(3);
-        } else {
-          // Good quality - proceed
-          setStep(3);
-        }
+        setStep(3); // Always proceed
       },
       onError: (error: any) => {
         setToast({
@@ -169,33 +148,6 @@ export default function NewProject() {
 
   const handleGenerate = () => {
     if (!projectId || !selectedTemplate) return;
-
-    // QUALITY GATE: Validate all required questions are answered
-    const requiredQuestions = questions.filter((q: any) => q.required);
-    const missingAnswers = requiredQuestions.filter(
-      (q: any) => !answers[q.field] || answers[q.field].trim() === ''
-    );
-
-    if (missingAnswers.length > 0) {
-      setToast({
-        message: `Please answer these required questions: ${missingAnswers.map((q: any) => q.question).join(', ')}`,
-        type: 'error',
-      });
-      return; // Don't proceed
-    }
-
-    // QUALITY GATE: Validate required answers have minimum length
-    const tooShortAnswers = requiredQuestions.filter(
-      (q: any) => answers[q.field] && answers[q.field].trim().length < 20
-    );
-
-    if (tooShortAnswers.length > 0) {
-      setToast({
-        message: `Please provide more detail for: ${tooShortAnswers.map((q: any) => q.question).join(', ')}. Each answer should be at least 20 characters.`,
-        type: 'warning',
-      });
-      return; // Don't proceed
-    }
 
     const inputData = {
       ...extractedData,
@@ -374,7 +326,7 @@ export default function NewProject() {
                 
                 <button
                   onClick={handleExtract}
-                  disabled={!description || description.length < 50 || extractMutation.isPending}
+                  disabled={!description || extractMutation.isPending}
                   className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex items-center justify-center"
                 >
                   {extractMutation.isPending ? (
@@ -403,11 +355,6 @@ export default function NewProject() {
                     </>
                   ) : 'Continue'}
                 </button>
-                {description && description.length < 50 && (
-                  <p className="mt-2 text-sm text-yellow-600">
-                    Please provide at least 50 characters for better analysis ({description.length}/50)
-                  </p>
-                )}
               </div>
             )}
 
@@ -491,49 +438,29 @@ export default function NewProject() {
                 )}
                 
                 <div className="space-y-6">
-                  {questions.map((q: any) => {
-                    const value = answers[q.field] || '';
-                    const isEmpty = value.trim() === '';
-                    const isInvalid = q.required && isEmpty;
-                    
-                    return (
-                      <div key={q.field}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {q.question}
-                          {q.required && <span className="text-red-500"> *</span>}
-                          {!q.required && <span className="text-gray-400 text-xs ml-1">(optional)</span>}
-                        </label>
-                        {q.example && (
-                          <p className="text-xs text-gray-500 mb-2">
-                            Example: {q.example}
-                          </p>
-                        )}
-                        <textarea
-                          value={value}
-                          onChange={(e) =>
-                            setAnswers({ ...answers, [q.field]: e.target.value })
-                          }
-                          rows={3}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 ${
-                            isInvalid
-                              ? 'border-red-300 focus:ring-red-500 bg-red-50'
-                              : 'border-gray-300 focus:ring-blue-500'
-                          }`}
-                          placeholder={q.required ? 'Required field' : 'Optional'}
-                        />
-                        {isInvalid && (
-                          <p className="mt-1 text-sm text-red-600">
-                            This field is required for generation
-                          </p>
-                        )}
-                        {!isEmpty && value.length < 20 && q.required && (
-                          <p className="mt-1 text-sm text-yellow-600">
-                            Please provide more detail (at least 20 characters)
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {questions.map((q: any) => (
+                    <div key={q.field}>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {q.question}
+                        {q.required && <span className="text-red-500"> *</span>}
+                        {!q.required && <span className="text-gray-400 text-xs ml-1">(optional)</span>}
+                      </label>
+                      {q.example && (
+                        <p className="text-xs text-gray-500 mb-2">
+                          Example: {q.example}
+                        </p>
+                      )}
+                      <textarea
+                        value={answers[q.field] || ''}
+                        onChange={(e) =>
+                          setAnswers({ ...answers, [q.field]: e.target.value })
+                        }
+                        rows={3}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder={q.required ? 'Required' : 'Optional'}
+                      />
+                    </div>
+                  ))}
                 </div>
                 
                 <button
