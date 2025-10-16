@@ -167,7 +167,8 @@ class GenerationService:
         generation.completed_at = datetime.utcnow()
         generation.llm_cost = llm_cost
         generation.image_cost = image_cost
-        generation.total_cost = llm_cost + image_cost
+        total_cost = llm_cost + image_cost
+        generation.total_cost = total_cost
         
         # Update project
         project = generation.project

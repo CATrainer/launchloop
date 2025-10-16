@@ -73,6 +73,20 @@ Score guidance:
             # Log what we got back
             logger.info("Product info extraction complete", extra={"response_length": len(response_text)})
             
+            # Strip markdown code fences if present
+            response_text = response_text.strip()
+            if response_text.startswith("```"):
+                # Remove opening fence
+                lines = response_text.split("\n")
+                lines = lines[1:] if len(lines) > 1 else lines
+                # Remove closing fence
+                if lines and lines[-1].strip() == "```":
+                    lines = lines[:-1]
+                response_text = "\n".join(lines).strip()
+            
+            if not response_text:
+                raise ValueError("Empty response after stripping markdown")
+            
             extracted = json.loads(response_text)
             
             # Validate we didn't get "Unknown" values
