@@ -86,13 +86,22 @@ export default function NewProject() {
   }, [projectId, step, description, extractedData, selectedTemplate, questions, answers, generationId]);
 
   const handleCreateProject = () => {
-    if (!projectName) return;
+    if (!projectName || projectName.length > 255) return;
     createProject(
       { name: projectName },
       {
         onSuccess: (response: any) => {
           setProjectId(response.data.id);
           setStep(2);
+        },
+        onError: (error: any) => {
+          const errorMessage = error.response?.data?.detail || 'Failed to create project. Please try again.';
+          setToast({
+            message: Array.isArray(errorMessage) 
+              ? errorMessage.map((e: any) => e.msg).join(', ')
+              : errorMessage,
+            type: 'error',
+          });
         },
       }
     );
@@ -258,17 +267,39 @@ export default function NewProject() {
                 <h1 className="text-3xl font-bold mb-2">Create New Project</h1>
                 <p className="text-gray-600 mb-6">Give your project a name</p>
                 
-                <input
-                  type="text"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="My Awesome Product"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-4"
-                />
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value.slice(0, 255))}
+                    placeholder="My Awesome Product"
+                    maxLength={255}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                      projectName.length > 255 ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-xs text-gray-500">
+                      {projectName.length > 200 && projectName.length <= 255 && (
+                        <span className="text-yellow-600">⚠️ Getting close to limit</span>
+                      )}
+                      {projectName.length > 255 && (
+                        <span className="text-red-600">❌ Name is too long</span>
+                      )}
+                    </p>
+                    <p className={`text-xs ${
+                      projectName.length > 240 ? 'text-red-600 font-semibold' : 
+                      projectName.length > 200 ? 'text-yellow-600' : 
+                      'text-gray-400'
+                    }`}>
+                      {projectName.length}/255
+                    </p>
+                  </div>
+                </div>
                 
                 <button
                   onClick={handleCreateProject}
-                  disabled={!projectName}
+                  disabled={!projectName || projectName.length > 255}
                   className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
                 >
                   Continue
