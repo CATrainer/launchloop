@@ -10,6 +10,8 @@ import {
   useCreateGeneration,
   useGeneration,
 } from '../../hooks/useGeneration';
+import { Toast } from '../../components/shared/Toast';
+import { TierLimitBanner } from '../../components/shared/TierLimitBanner';
 
 export default function NewProject() {
   const router = useRouter();
@@ -25,6 +27,10 @@ export default function NewProject() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [generationId, setGenerationId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  } | null>(null);
 
   const extractMutation = useExtract();
   const questionsMutation = useGenerateQuestions();
@@ -50,6 +56,12 @@ export default function NewProject() {
         setExtractedData(response.data);
         setStep(3);
       },
+      onError: (error: any) => {
+        setToast({
+          message: error.response?.data?.detail || 'Failed to analyze your product description. Please try again.',
+          type: 'error',
+        });
+      },
     });
   };
 
@@ -65,6 +77,12 @@ export default function NewProject() {
         onSuccess: (response) => {
           setQuestions(response.data.questions);
           setStep(4);
+        },
+        onError: (error: any) => {
+          setToast({
+            message: error.response?.data?.detail || 'Failed to generate questions. Please try again.',
+            type: 'error',
+          });
         },
       }
     );
@@ -90,6 +108,22 @@ export default function NewProject() {
           setGenerationId(response.data.id);
           setStep(5);
         },
+        onError: (error: any) => {
+          const errorMessage = error.response?.data?.detail || 'Failed to start generation. Please try again.';
+          
+          // Check if it's a generation limit error
+          if (error.response?.status === 403) {
+            setToast({
+              message: errorMessage + ' You\'ve reached your monthly generation limit.',
+              type: 'error',
+            });
+          } else {
+            setToast({
+              message: errorMessage,
+              type: 'error',
+            });
+          }
+        },
       }
     );
   };
@@ -99,11 +133,32 @@ export default function NewProject() {
     router.push(`/projects/${projectId}`);
   }
 
+  // Get tier limits
+  const getTierLimits = (tier: string) => {
+    const limits: Record<string, { generations: number; revisions: number }> = {
+      free: { generations: 1, revisions: 10 },
+      pro: { generations: 5, revisions: -1 },
+      ultimate: { generations: -1, revisions: -1 },
+    };
+    return limits[tier.toLowerCase()] || limits.free;
+  };
+
+  const tierLimits = user ? getTierLimits(user.tier) : { generations: 0, revisions: 0 };
+
   return (
     <>
       <Head>
         <title>New Project - Launch Loop</title>
       </Head>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b">
@@ -202,6 +257,18 @@ export default function NewProject() {
                   Answer these questions to personalize your landing page
                 </p>
                 
+                {/* Tier Limit Warning */}
+                {user && (
+                  <TierLimitBanner
+                    tier={user.tier}
+                    generationsUsed={user.generations_used_this_month}
+                    generationsLimit={tierLimits.generations}
+                    revisionsUsed={user.revisions_used_this_month}
+                    revisionsLimit={tierLimits.revisions}
+                    onUpgrade={() => router.push('/dashboard')} // TODO: Add upgrade flow
+                  />
+                )}
+                
                 <div className="space-y-6">
                   {questions.map((q: any) => (
                     <div key={q.field}>
@@ -228,10 +295,45 @@ export default function NewProject() {
                 
                 <button
                   onClick={handleGenerate}
-                  disabled={createGenerationMutation.isPending}
+                  disabled={
+                    createGenerationMutation.isPending ||
+                    (tierLimits.generations !== -1 &&
+                      user &&
+                      user.generations_used_this_month >= tierLimits.generations)
+                  }
                   className="w-full mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
                 >
-                  {createGenerationMutation.isPending ? 'Starting...' : 'Generate Landing Page'}
+                  {createGenerationMutation.isPending ? (
+                    <span className="flex items-center justify-center">
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Starting generation...
+                    </span>
+                  ) : tierLimits.generations !== -1 &&
+                    user &&
+                    user.generations_used_this_month >= tierLimits.generations ? (
+                    '🚫 Generation Limit Reached - Upgrade to Continue'
+                  ) : (
+                    '🚀 Generate Landing Page'
+                  )}
                 </button>
               </div>
             )}

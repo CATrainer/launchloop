@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useProjects } from '../hooks/useProjects';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
+import { TierLimitBanner } from '../components/shared/TierLimitBanner';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -17,8 +18,28 @@ export default function Dashboard() {
   }, [user, authLoading, router]);
 
   if (authLoading || !user) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
+
+  // Get tier limits
+  const getTierLimits = (tier: string) => {
+    const limits: Record<string, { generations: number; revisions: number }> = {
+      free: { generations: 1, revisions: 10 },
+      pro: { generations: 5, revisions: -1 },
+      ultimate: { generations: -1, revisions: -1 },
+    };
+    return limits[tier.toLowerCase()] || limits.free;
+  };
+
+  const tierLimits = getTierLimits(user.tier);
+  const canCreateNew = tierLimits.generations === -1 || user.generations_used_this_month < tierLimits.generations;
 
   return (
     <>
@@ -53,17 +74,46 @@ export default function Dashboard() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
               <p className="text-gray-600 mt-1">
-                Tier: <span className="font-semibold">{user.tier}</span> • Used
-                this month: {user.generations_used_this_month} generations, {user.revisions_used_this_month} revisions
+                <span className="inline-block bg-gray-100 px-3 py-1 rounded-full text-sm font-semibold capitalize">
+                  {user.tier} Tier
+                </span>
+                <span className="mx-2">•</span>
+                {tierLimits.generations === -1 ? (
+                  <span>Unlimited generations</span>
+                ) : (
+                  <span>
+                    {user.generations_used_this_month} / {tierLimits.generations} generations used
+                  </span>
+                )}
               </p>
             </div>
-            <Link
-              href="/projects/new"
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-            >
-              + New Project
-            </Link>
+            {canCreateNew ? (
+              <Link
+                href="/projects/new"
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+              >
+                + New Project
+              </Link>
+            ) : (
+              <button
+                disabled
+                className="bg-gray-300 text-gray-600 px-6 py-3 rounded-lg font-semibold cursor-not-allowed"
+                title="Generation limit reached"
+              >
+                🚫 Limit Reached
+              </button>
+            )}
           </div>
+
+          {/* Tier Limit Banner */}
+          <TierLimitBanner
+            tier={user.tier}
+            generationsUsed={user.generations_used_this_month}
+            generationsLimit={tierLimits.generations}
+            revisionsUsed={user.revisions_used_this_month}
+            revisionsLimit={tierLimits.revisions}
+            onUpgrade={() => {}} // TODO: Add upgrade flow
+          />
 
           {projectsLoading ? (
             <div className="text-center py-12">
