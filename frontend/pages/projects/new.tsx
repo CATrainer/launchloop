@@ -199,15 +199,15 @@ export default function NewProject() {
     if (generationStartTime && generation && generation.status !== 'COMPLETE' && generation.status !== 'FAILED') {
       const elapsed = Date.now() - generationStartTime;
       
-      // Show warning after 3 minutes
-      if (elapsed > 180000 && !showTimeoutWarning) {
+      // Show warning after 90 seconds (earlier warning)
+      if (elapsed > 90000 && !showTimeoutWarning) {
         setShowTimeoutWarning(true);
       }
       
-      // Show critical warning after 5 minutes
+      // Show more prominent warning after 5 minutes
       if (elapsed > 300000) {
         setToast({
-          message: 'Generation is taking longer than expected. You can check back later.',
+          message: 'Still processing - this is taking longer than usual. Your progress is saved and will complete in the background.',
           type: 'warning',
         });
       }
@@ -325,11 +325,40 @@ export default function NewProject() {
                 
                 <button
                   onClick={handleExtract}
-                  disabled={!description || extractMutation.isPending}
-                  className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                  disabled={!description || description.length < 50 || extractMutation.isPending}
+                  className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex items-center justify-center"
                 >
-                  {extractMutation.isPending ? 'Analyzing...' : 'Continue'}
+                  {extractMutation.isPending ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Analyzing your product description...
+                    </>
+                  ) : 'Continue'}
                 </button>
+                {description && description.length < 50 && (
+                  <p className="mt-2 text-sm text-yellow-600">
+                    Please provide at least 50 characters for better analysis ({description.length}/50)
+                  </p>
+                )}
               </div>
             )}
 
@@ -342,49 +371,52 @@ export default function NewProject() {
                 </p>
                 
                 <div className="space-y-4">
-                  {extractedData.suggested_templates?.map((templateId: string) => (
-                    <button
-                      key={templateId}
-                      onClick={() => handleSelectTemplate(templateId)}
-                      disabled={questionsMutation.isPending}
-                      className={`w-full p-6 border-2 rounded-lg transition text-left relative ${
-                        questionsMutation.isPending
-                          ? 'border-blue-400 bg-blue-50 cursor-wait'
-                          : 'border-gray-200 hover:border-blue-600'
-                      }`}
-                    >
-                      {questionsMutation.isPending && (
-                        <div className="absolute top-6 right-6">
-                          <svg
-                            className="animate-spin h-5 w-5 text-blue-600"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                        </div>
-                      )}
-                      <h3 className="font-bold text-lg capitalize">
-                        {templateId.replace('-', ' ')}
-                      </h3>
-                      <p className="text-gray-600 text-sm mt-1">
-                        {questionsMutation.isPending ? 'Loading questions...' : 'Best for early-stage products'}
-                      </p>
-                    </button>
-                  ))}
+                  {extractedData.suggested_templates?.map((templateId: string) => {
+                    const isThisTemplateLoading = questionsMutation.isPending && selectedTemplate === templateId;
+                    return (
+                      <button
+                        key={templateId}
+                        onClick={() => handleSelectTemplate(templateId)}
+                        disabled={questionsMutation.isPending}
+                        className={`w-full p-6 border-2 rounded-lg transition text-left relative ${
+                          isThisTemplateLoading
+                            ? 'border-blue-400 bg-blue-50 cursor-wait'
+                            : 'border-gray-200 hover:border-blue-600 hover:shadow-md'
+                        } ${questionsMutation.isPending && !isThisTemplateLoading ? 'opacity-50' : ''}`}
+                      >
+                        {isThisTemplateLoading && (
+                          <div className="absolute top-6 right-6">
+                            <svg
+                              className="animate-spin h-5 w-5 text-blue-600"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                          </div>
+                        )}
+                        <h3 className="font-bold text-lg capitalize">
+                          {templateId.replace('-', ' ')}
+                        </h3>
+                        <p className="text-gray-600 text-sm mt-1">
+                          {isThisTemplateLoading ? 'Generating personalized questions...' : 'Best for early-stage products'}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -522,16 +554,19 @@ export default function NewProject() {
                     <p className="text-gray-600 mb-6">{generation.progress}% complete</p>
                     
                     <p className="text-sm text-gray-500 mb-4">
-                      This usually takes 60-120 seconds
+                      This typically takes 1-3 minutes, occasionally up to 5 minutes
                     </p>
                     
                     {showTimeoutWarning && (
                       <div className="max-w-md mx-auto mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-yellow-800 mb-2">
-                          ⏱️ Taking longer than expected...
+                        <p className="text-sm text-yellow-800 mb-2 font-semibold">
+                          ⏱️ Taking longer than usual...
                         </p>
-                        <p className="text-xs text-yellow-700">
-                          You can safely close this page and check back later. Your generation will continue in the background.
+                        <p className="text-xs text-yellow-700 mb-2">
+                          This is normal during high demand. Your generation is still processing.
+                        </p>
+                        <p className="text-xs text-yellow-600">
+                          You can close this page and check back later - progress is saved automatically.
                         </p>
                       </div>
                     )}
@@ -555,23 +590,31 @@ export default function NewProject() {
                 {generation.status === 'FAILED' && (
                   <div className="max-w-md mx-auto">
                     <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-red-800 mb-2">
+                      <p className="text-red-800 mb-3 font-medium">
                         {generation.error_message || 'Something went wrong during generation'}
                       </p>
-                      <p className="text-sm text-red-600">
-                        This could be due to API rate limits or a temporary issue.
+                      {generation.progress > 0 && (
+                        <p className="text-sm text-red-600 mb-2">
+                          Progress was at {generation.progress}% when this error occurred.
+                        </p>
+                      )}
+                      <p className="text-sm text-red-700">
+                        💳 Your credit has been automatically refunded.
                       </p>
                     </div>
                     <div className="flex flex-col gap-3">
-                      <Link
-                        href={`/projects/${projectId}`}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                      <button
+                        onClick={() => {
+                          // Retry the generation
+                          window.location.href = `/projects/${projectId}`;
+                        }}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-center"
                       >
-                        🔄 Go to Project & Retry
-                      </Link>
+                        🔄 Try Again
+                      </button>
                       <Link
                         href="/dashboard"
-                        className="text-gray-600 hover:underline text-sm"
+                        className="text-gray-600 hover:underline text-sm text-center"
                       >
                         ← Back to Dashboard
                       </Link>

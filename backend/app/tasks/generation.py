@@ -176,13 +176,21 @@ def process_generation(self, generation_id: str, db=None):
     
     except SoftTimeLimitExceeded:
         # Task taking too long - mark as failed
-        logger.error("Generation task timeout", extra={"generation_id": generation_id})
+        # Get current progress to keep where it was
+        current_generation = db.query(Generation).filter(Generation.id == generation_id).first()
+        current_progress = current_generation.progress if current_generation else 0
+        
+        logger.error("Generation task timeout", extra={
+            "generation_id": generation_id,
+            "progress_at_timeout": current_progress
+        })
+        
         generation_service.update_generation_progress(
             db,
             generation_id,
             GenerationStatus.FAILED,
-            0,
-            error_message="Generation timed out. Please try again."
+            current_progress,  # Keep progress where it timed out
+            error_message="Generation took longer than expected and timed out. This can happen during high AI service demand. Your credit has been refunded. Please try again."
         )
         # Refund user credit
         _refund_user_credit(db, generation_id)
@@ -195,6 +203,10 @@ def process_generation(self, generation_id: str, db=None):
             "error": error_str,
             "attempt": self.request.retries + 1
         }, exc_info=True)
+        
+        # Get current progress before deciding what to do
+        current_generation = db.query(Generation).filter(Generation.id == generation_id).first()
+        current_progress = current_generation.progress if current_generation else 0
         
         # Check if error is retryable
         retryable_errors = [
@@ -210,26 +222,69 @@ def process_generation(self, generation_id: str, db=None):
         is_retryable = any(keyword in error_str.lower() for keyword in retryable_errors)
         
         if is_retryable and self.request.retries < self.max_retries:
-            # Retry with exponential backoff
+            # Retry with exponential backoff - but DON'T reset progress
             retry_delay = 60 * (2 ** self.request.retries)  # 60s, 120s, 240s
+            
+            # Keep progress where it was, just update status to show retrying
+            generation_service.update_generation_progress(
+                db,
+                generation_id,
+                GenerationStatus.GENERATING_COPY,  # Keep in progress state
+                current_progress,  # DON'T reset to 0
+                error_message=f"Retrying due to {error_str[:100]}... (attempt {self.request.retries + 2}/{self.max_retries + 1})"
+            )
+            
             logger.info("Retrying generation", extra={
                 "generation_id": generation_id,
                 "retry_in_seconds": retry_delay,
-                "attempt": self.request.retries + 2
+                "attempt": self.request.retries + 2,
+                "progress_kept_at": current_progress
             })
             raise self.retry(exc=e, countdown=retry_delay)
         else:
             # Permanent failure or max retries reached
+            # Keep progress where it failed, don't reset to 0
+            user_friendly_error = _make_error_user_friendly(error_str)
             generation_service.update_generation_progress(
                 db,
                 generation_id,
                 GenerationStatus.FAILED,
-                0,
-                error_message=error_str
+                current_progress,  # Keep at failure point, not 0
+                error_message=user_friendly_error
             )
             # Refund user credit
             _refund_user_credit(db, generation_id)
             raise
+
+
+def _make_error_user_friendly(error_str: str) -> str:
+    """Convert technical error messages to user-friendly ones"""
+    error_lower = error_str.lower()
+    
+    # Map technical errors to user-friendly messages
+    if "rate" in error_lower and "limit" in error_lower:
+        return "We're hitting API rate limits. This usually resolves in a few minutes. Please try again shortly."
+    
+    if "timeout" in error_lower or "timed out" in error_lower:
+        return "The generation took too long and timed out. This can happen during high demand. Please try again."
+    
+    if "json" in error_lower and ("parse" in error_lower or "decode" in error_lower):
+        return "There was an issue processing the AI response. Please try generating again."
+    
+    if "connection" in error_lower or "network" in error_lower:
+        return "We're having trouble connecting to our AI services. Please check your internet connection and try again."
+    
+    if "overloaded" in error_lower or "503" in error_str or "502" in error_str:
+        return "Our AI services are temporarily overloaded. Please wait a moment and try again."
+    
+    if "401" in error_str or "unauthorized" in error_lower:
+        return "Authentication error. Please log out and log back in."
+    
+    if "404" in error_str or "not found" in error_lower:
+        return "Required resource not found. Please contact support if this persists."
+    
+    # If no match, return a generic but helpful message
+    return f"Generation failed due to a technical issue. Please try again. If this persists, contact support with this error: {error_str[:100]}"
 
 
 def _refund_user_credit(db, generation_id: str):

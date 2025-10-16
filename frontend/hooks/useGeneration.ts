@@ -1,7 +1,11 @@
+import React from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { generateAPI } from '../lib/api';
 
 export function useGeneration(id: string | null) {
+  // Track start time for backoff strategy
+  const startTimeRef = React.useRef<number | null>(null);
+  
   return useQuery({
     queryKey: ['generation', id],
     queryFn: async () => {
@@ -11,7 +15,7 @@ export function useGeneration(id: string | null) {
     },
     enabled: !!id,
     refetchInterval: (query) => {
-      // Poll every 2 seconds if generation is in progress
+      // Poll with adaptive backoff based on elapsed time
       const data = query.state.data as any;
       const error = query.state.error;
       
@@ -23,9 +27,28 @@ export function useGeneration(id: string | null) {
         return false;
       }
       
-      // Continue polling for in-progress generations
-      return 2000;
+      // Initialize start time on first poll
+      if (!startTimeRef.current) {
+        startTimeRef.current = Date.now();
+      }
+      
+      // Adaptive polling: start fast, slow down over time
+      const elapsed = Date.now() - startTimeRef.current;
+      
+      if (elapsed < 120000) {
+        // First 2 minutes: poll every 2 seconds
+        return 2000;
+      } else if (elapsed < 300000) {
+        // 2-5 minutes: poll every 5 seconds
+        return 5000;
+      } else {
+        // After 5 minutes: poll every 10 seconds
+        return 10000;
+      }
     },
+    // Retry on network errors but with backoff
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 
