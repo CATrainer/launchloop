@@ -30,6 +30,7 @@ async def subdomain_middleware(request: Request, call_next):
     })
     
     # Check if this is the main domain or API subdomain
+    # Use EXACT match, not substring match!
     main_domains = [
         settings.MAIN_DOMAIN,
         f"www.{settings.MAIN_DOMAIN}",
@@ -37,7 +38,7 @@ async def subdomain_middleware(request: Request, call_next):
         f"staging.{settings.MAIN_DOMAIN}",
     ]
     
-    if any(domain in host for domain in main_domains):
+    if host in main_domains:
         logger.info("Host matches main domain, skipping subdomain routing", extra={"host": host})
         return await call_next(request)
     
