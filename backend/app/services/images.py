@@ -12,7 +12,10 @@ class ImageService:
     """Service for AI image generation"""
     
     def __init__(self):
-        openai.api_key = settings.OPENAI_API_KEY
+        self.client = openai.OpenAI(
+            api_key=settings.OPENAI_API_KEY,
+            timeout=60.0  # 60 second timeout
+        )
         self.model = "dall-e-3"
         self.size = "1024x1024"
         self.quality = "standard"
@@ -50,7 +53,7 @@ class ImageService:
         """Generate a single image"""
         
         try:
-            response = openai.images.generate(
+            response = self.client.images.generate(
                 model=self.model,
                 prompt=prompt,
                 size=self.size,

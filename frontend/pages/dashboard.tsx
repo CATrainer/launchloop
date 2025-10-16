@@ -12,12 +12,23 @@ export default function Dashboard() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
   const { projects, isLoading: projectsLoading } = useProjects();
+  const [loadingTooLong, setLoadingTooLong] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
+
+  // Show message if loading takes too long
+  useEffect(() => {
+    if (projectsLoading) {
+      const timer = setTimeout(() => setLoadingTooLong(true), 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setLoadingTooLong(false);
+    }
+  }, [projectsLoading]);
 
   if (authLoading || !user) {
     return (
@@ -142,7 +153,12 @@ export default function Dashboard() {
 
           {projectsLoading ? (
             <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+              {loadingTooLong && (
+                <p className="text-gray-600 text-sm mt-4">
+                  This is taking longer than expected. Please wait...
+                </p>
+              )}
             </div>
           ) : projects && projects.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

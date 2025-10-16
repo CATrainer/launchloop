@@ -13,7 +13,10 @@ class LLMService:
     """Service for LLM interactions"""
     
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        self.client = anthropic.Anthropic(
+            api_key=settings.ANTHROPIC_API_KEY,
+            timeout=60.0  # 60 second timeout
+        )
         self.model = "claude-sonnet-4-20250514"
     
     def extract_product_info(self, user_input: str) -> Dict[str, Any]:
