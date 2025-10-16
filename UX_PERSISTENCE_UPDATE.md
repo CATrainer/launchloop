@@ -331,14 +331,15 @@ onError: (error: any) => {
 
 ## Migration Required
 
-Run this SQL to add the new column:
+Run the Alembic migration to add the new column:
 
 ```bash
 # Railway
-railway run --service backend python scripts/run_migration.py migrations/20251016_add_creation_state.sql
+railway run --service backend alembic upgrade head
 
-# Or directly in Railway DB console:
-ALTER TABLE projects ADD COLUMN creation_state JSON NULL;
+# Or locally
+cd backend
+alembic upgrade head
 ```
 
 ---

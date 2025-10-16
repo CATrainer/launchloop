@@ -91,23 +91,18 @@
 
 ## Migration Required ⚠️
 
-Before these features work, you need to run the database migration:
+Before persistence features work, you need to run the Alembic migration:
 
 ```bash
-railway run --service backend python -c "
-from app.database import engine
-from sqlalchemy import text
+# In Railway
+railway run --service backend alembic upgrade head
 
-with engine.connect() as conn:
-    conn.execute(text('ALTER TABLE projects ADD COLUMN IF NOT EXISTS creation_state JSON NULL'))
-    conn.commit()
-"
+# Or locally
+cd backend
+alembic upgrade head
 ```
 
-Or manually in Railway DB console:
-```sql
-ALTER TABLE projects ADD COLUMN creation_state JSON NULL;
-```
+This adds the `creation_state` JSON column to the `projects` table.
 
 ---
 
