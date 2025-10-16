@@ -29,6 +29,8 @@ export default function NewProject() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [generationId, setGenerationId] = useState<string | null>(null);
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'error' | 'warning' | 'info';
@@ -152,6 +154,8 @@ export default function NewProject() {
       {
         onSuccess: (response) => {
           setGenerationId(response.data.id);
+          setGenerationStartTime(Date.now());
+          setShowTimeoutWarning(false);
           setStep(5);
         },
         onError: (error: any) => {
@@ -181,10 +185,34 @@ export default function NewProject() {
     );
   };
 
+  // Monitor generation timeout
+  useEffect(() => {
+    if (generationStartTime && generation && generation.status !== 'COMPLETE' && generation.status !== 'FAILED') {
+      const elapsed = Date.now() - generationStartTime;
+      
+      // Show warning after 3 minutes
+      if (elapsed > 180000 && !showTimeoutWarning) {
+        setShowTimeoutWarning(true);
+      }
+      
+      // Show critical warning after 5 minutes
+      if (elapsed > 300000) {
+        setToast({
+          message: 'Generation is taking longer than expected. You can check back later.',
+          type: 'warning',
+        });
+      }
+    }
+  }, [generation, generationStartTime, showTimeoutWarning]);
+
   // Redirect when generation is complete
-  if (generation?.status === 'COMPLETE' && projectId) {
-    router.push(`/projects/${projectId}`);
-  }
+  useEffect(() => {
+    if (generation?.status === 'COMPLETE' && projectId) {
+      setTimeout(() => {
+        router.push(`/projects/${projectId}`);
+      }, 1000);
+    }
+  }, [generation?.status, projectId, router]);
 
   // Get tier limits
   const getTierLimits = (tier: string) => {
@@ -419,29 +447,117 @@ export default function NewProject() {
               </div>
             )}
 
+            {/* Step 5: Loading */}
+            {step === 5 && !generation && (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-6"></div>
+                <h2 className="text-2xl font-bold mb-4">Starting generation...</h2>
+                <p className="text-gray-600">Setting up your landing page generation</p>
+              </div>
+            )}
+
             {/* Step 5: Generating */}
             {step === 5 && generation && (
               <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-6"></div>
+                {generation.status !== 'FAILED' && generation.status !== 'COMPLETE' && (
+                  <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-6"></div>
+                )}
+                
+                {generation.status === 'COMPLETE' && (
+                  <div className="text-6xl mb-4">✅</div>
+                )}
+                
+                {generation.status === 'FAILED' && (
+                  <div className="text-6xl mb-4">❌</div>
+                )}
+                
                 <h2 className="text-2xl font-bold mb-4">
                   {generation.status === 'ANALYZING' && 'Analyzing your product...'}
                   {generation.status === 'GENERATING_COPY' && 'Writing copy...'}
                   {generation.status === 'GENERATING_IMAGES' && 'Creating images...'}
                   {generation.status === 'ASSEMBLING' && 'Assembling page...'}
-                  {generation.status === 'COMPLETE' && 'Done! Redirecting...'}
-                  {generation.status === 'FAILED' && 'Generation failed'}
+                  {generation.status === 'COMPLETE' && 'Generation Complete!'}
+                  {generation.status === 'FAILED' && 'Generation Failed'}
                 </h2>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${generation.progress}%` }}
-                  />
-                </div>
-                <p className="text-gray-600">{generation.progress}% complete</p>
+                
+                {generation.status !== 'FAILED' && generation.status !== 'COMPLETE' && (
+                  <>
+                    <div className="w-full bg-gray-200 rounded-full h-3 mb-4 max-w-md mx-auto">
+                      <div
+                        className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${generation.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-gray-600 mb-6">{generation.progress}% complete</p>
+                    
+                    <p className="text-sm text-gray-500 mb-4">
+                      This usually takes 60-120 seconds
+                    </p>
+                    
+                    {showTimeoutWarning && (
+                      <div className="max-w-md mx-auto mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800 mb-2">
+                          ⏱️ Taking longer than expected...
+                        </p>
+                        <p className="text-xs text-yellow-700">
+                          You can safely close this page and check back later. Your generation will continue in the background.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {generation.status === 'COMPLETE' && (
+                  <div className="max-w-md mx-auto">
+                    <p className="text-gray-600 mb-4">Redirecting to your project...</p>
+                    <div className="flex justify-center">
+                      <Link
+                        href={`/projects/${projectId}`}
+                        className="text-blue-600 hover:underline text-sm"
+                      >
+                        Or click here to view now →
+                      </Link>
+                    </div>
+                  </div>
+                )}
                 
                 {generation.status === 'FAILED' && (
-                  <div className="mt-4 text-red-600">
-                    {generation.error_message || 'Something went wrong'}
+                  <div className="max-w-md mx-auto">
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-red-800 mb-2">
+                        {generation.error_message || 'Something went wrong during generation'}
+                      </p>
+                      <p className="text-sm text-red-600">
+                        This could be due to API rate limits or a temporary issue.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <Link
+                        href={`/projects/${projectId}`}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                      >
+                        🔄 Go to Project & Retry
+                      </Link>
+                      <Link
+                        href="/dashboard"
+                        className="text-gray-600 hover:underline text-sm"
+                      >
+                        ← Back to Dashboard
+                      </Link>
+                    </div>
+                  </div>
+                )}
+                
+                {(generation.status === 'GENERATING_COPY' || 
+                  generation.status === 'GENERATING_IMAGES' || 
+                  generation.status === 'ASSEMBLING') && (
+                  <div className="mt-8">
+                    <Link
+                      href={`/projects/${projectId}`}
+                      className="text-sm text-gray-500 hover:text-gray-700 underline"
+                    >
+                      View project page (generation continues in background)
+                    </Link>
                   </div>
                 )}
               </div>
