@@ -15,13 +15,15 @@ async def subdomain_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
     
-    # Check X-Forwarded-Host first (set by Cloudflare Worker)
-    # This preserves the original subdomain when proxied through api.thelaunchloop.com
-    host = request.headers.get("x-forwarded-host", "") or request.headers.get("host", "")
+    # Check X-Original-Host first (set by Cloudflare Worker)
+    # We use X-Original-Host instead of X-Forwarded-Host because Cloudflare
+    # overwrites X-Forwarded-Host when proxying through api.thelaunchloop.com
+    host = request.headers.get("x-original-host", "") or request.headers.get("host", "")
     
     # Log at INFO level so we can see it in Railway logs
     logger.info("Subdomain middleware processing", extra={
         "host": host,
+        "x_original_host": request.headers.get("x-original-host"),
         "x_forwarded_host": request.headers.get("x-forwarded-host"),
         "original_host": request.headers.get("host"),
         "path": request.url.path
