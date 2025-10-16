@@ -19,11 +19,13 @@ class GenerationTask(Task):
             return self.run(*args, **kwargs)
 
 
-@celery_app.task(base=GenerationTask, bind=True)
+@celery_app.task(base=GenerationTask, bind=True, time_limit=300, soft_time_limit=270)
 def process_generation(self, generation_id: str, db=None):
     """
     Process a generation request
     This is the main orchestrator task
+    
+    Time limit: 5 minutes (300s) hard, 4.5 minutes (270s) soft
     """
     
     try:

@@ -21,6 +21,48 @@ import json
 router = APIRouter()
 
 
+@router.post("/{generation_id}/retry")
+async def retry_generation(
+    generation_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retry a failed generation"""
+    
+    generation = db.query(Generation).filter(Generation.id == generation_id).first()
+    if not generation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation not found"
+        )
+    
+    # Verify ownership
+    project = db.query(Project).filter(Project.id == generation.project_id).first()
+    if not project or project.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized"
+        )
+    
+    # Can only retry failed generations
+    if generation.status != "FAILED":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only retry failed generations"
+        )
+    
+    # Reset generation status
+    generation.status = "PENDING"
+    generation.progress = 0
+    generation.error_message = None
+    db.commit()
+    
+    # Queue task
+    process_generation.delay(generation.id)
+    
+    return {"message": "Generation retrying", "generation_id": generation.id}
+
+
 @router.post("/extract")
 async def extract_info(
     user_input: dict,

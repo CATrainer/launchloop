@@ -52,7 +52,7 @@ async def create_signup(
         id=generate_uuid(),
         project_id=project.id,
         email=email,
-        metadata=metadata
+        signup_metadata=metadata
     )
     
     db.add(signup)
