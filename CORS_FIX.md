@@ -13,10 +13,10 @@ You're getting 400 Bad Request errors on OPTIONS requests to `/api/v1/auth/login
 
 ### 2. CORS Configuration (`backend/app/main.py`)
 - Now supports multiple frontend origins
-- Reads from `FRONTEND_URL` and `ALLOWED_ORIGINS` environment variables
+- Reads from `FRONTEND_URL` and `CORS_ORIGINS` environment variables
 
 ### 3. Configuration (`backend/app/config.py`)
-- Added `ALLOWED_ORIGINS` setting for multiple frontend domains
+- Added `CORS_ORIGINS` setting for multiple frontend domains
 
 ## What You Need To Do in Railway
 
@@ -30,13 +30,13 @@ FRONTEND_URL=https://your-actual-frontend-domain.com
 
 # Additional origins if you have multiple (OPTIONAL)
 # Comma-separated, no spaces
-ALLOWED_ORIGINS=https://app.yourdomain.com,https://staging.yourdomain.com
+CORS_ORIGINS=https://app.yourdomain.com,http://localhost:3000
 ```
 
 **Examples:**
 - If using Railway default: `FRONTEND_URL=https://your-frontend-xyz.up.railway.app`
 - If using custom domain: `FRONTEND_URL=https://app.yourdomain.com`
-- Multiple domains: `ALLOWED_ORIGINS=https://staging.yourdomain.com,http://localhost:3000`
+- Multiple domains: `CORS_ORIGINS=https://staging.yourdomain.com,http://localhost:3000`
 
 ### Step 2: Redeploy Backend
 

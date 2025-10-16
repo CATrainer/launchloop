@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "http://localhost:8000"
     
     # Additional allowed origins (comma-separated)
-    ALLOWED_ORIGINS: str = ""
+    CORS_ORIGINS: str = ""
     
     # Database
     DATABASE_URL: str

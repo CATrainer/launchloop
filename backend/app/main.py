@@ -22,10 +22,14 @@ app = FastAPI(
 
 # Build allowed origins list
 allowed_origins = [settings.FRONTEND_URL]
-if settings.ALLOWED_ORIGINS:
+if settings.CORS_ORIGINS:
     # Split comma-separated origins and strip whitespace
-    additional_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+    additional_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
     allowed_origins.extend(additional_origins)
+
+# Log CORS configuration on startup
+print(f"🔒 CORS Configuration:")
+print(f"   Allowed Origins: {allowed_origins}")
 
 # CORS middleware
 app.add_middleware(

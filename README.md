@@ -95,7 +95,7 @@ BACKEND_URL=https://your-backend.railway.app
 
 # CORS - Additional allowed origins (comma-separated, optional)
 # Use this if you have multiple frontend domains (staging, production, etc.)
-ALLOWED_ORIGINS=https://app.yourdomain.com,https://staging.yourdomain.com
+CORS_ORIGINS=https://app.yourdomain.com,https://staging.yourdomain.com
 
 # Database (Railway provides automatically)
 DATABASE_URL=${{Postgres.DATABASE_URL}}
@@ -313,7 +313,7 @@ After deployment, verify:
 - **Issue:** Login fails with 400 Bad Request on OPTIONS requests
 - **Fix:** 
   1. Ensure `FRONTEND_URL` environment variable is set to your deployed frontend domain
-  2. Add additional domains to `ALLOWED_ORIGINS` if you have multiple frontends (comma-separated)
+  2. Add additional domains to `CORS_ORIGINS` if you have multiple frontends (comma-separated)
   3. Redeploy backend after updating environment variables
 
 ---
