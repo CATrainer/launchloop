@@ -289,6 +289,23 @@ async def get_generation(
     return generation
 
 
+@router.post("/names")
+async def generate_names(
+    request_data: dict,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Generate name options for a project based on extracted data"""
+    
+    extracted_data = request_data.get("extracted_data", {})
+    answers = request_data.get("answers", {})
+    
+    # Generate names using LLM
+    names = llm_service.generate_project_names(extracted_data, answers)
+    
+    return {"names": names}
+
+
 @router.get("/templates", response_model=List[dict])
 async def list_templates():
     """List all available templates"""

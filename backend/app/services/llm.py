@@ -335,6 +335,92 @@ Now generate the copy (JSON only, no markdown):"""
             }, exc_info=True)
             raise Exception(f"Failed to generate copy after {retry_count + 1} attempts: {str(e)}")
     
+    def generate_project_names(
+        self,
+        extracted_data: Dict[str, Any],
+        answers: Dict[str, str]
+    ) -> List[str]:
+        """Generate creative name options for a project"""
+        
+        problem = extracted_data.get('problem', '')
+        solution = extracted_data.get('solution_approach', '')
+        audience = extracted_data.get('target_audience', '')
+        
+        prompt = f"""Generate 5 creative, memorable product names based on this information:
+
+PRODUCT INFO:
+- Problem: {problem}
+- Solution: {solution}
+- Target Audience: {audience}
+
+Additional context: {json.dumps(answers, indent=2)}
+
+NAMING RULES:
+1. Short (1-3 words, max 20 characters)
+2. Easy to spell and remember
+3. Professional and modern
+4. Domain-friendly (no special characters)
+5. Reflects the product's value or personality
+6. Mix of different styles:
+   - Descriptive (e.g., "TaskFlow")
+   - Invented/Brandable (e.g., "Zephyr")
+   - Compound (e.g., "QuickStart")
+
+Return ONLY valid JSON array of exactly 5 names:
+["Name1", "Name2", "Name3", "Name4", "Name5"]
+
+No explanations, just the JSON array."""
+        
+        try:
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=500,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            
+            response_text = message.content[0].text
+            
+            # Extract JSON
+            names_json = self._extract_json_from_text(response_text)
+            
+            if names_json and isinstance(names_json, list):
+                # Return first 5 names
+                return names_json[:5]
+            
+            # Fallback: extract names from text
+            import re
+            names = re.findall(r'"([^"]+)"', response_text)
+            if names:
+                return names[:5]
+            
+            # Last resort fallback
+            return self._generate_fallback_names(extracted_data)
+            
+        except Exception as e:
+            logger.error("Name generation failed", extra={"error": str(e)})
+            return self._generate_fallback_names(extracted_data)
+    
+    def _generate_fallback_names(self, extracted_data: Dict[str, Any]) -> List[str]:
+        """Generate simple fallback names if AI fails"""
+        problem = extracted_data.get('problem', '')
+        solution = extracted_data.get('solution_approach', '')
+        
+        # Extract key words
+        words = []
+        for text in [problem, solution]:
+            words.extend([w.capitalize() for w in text.split() if len(w) > 3])
+        
+        # Generate simple combinations
+        names = [
+            ''.join(words[:2]) if len(words) >= 2 else 'MyProduct',
+            ''.join(words[1:3]) if len(words) >= 3 else 'NewStartup',
+            f"{words[0]}Hub" if words else 'ProductHub',
+            f"{words[0]}Flow" if words else 'FlowApp',
+            f"Quick{words[0]}" if words else 'QuickLaunch'
+        ]
+        
+        return names[:5]
+    
     def _extract_json_from_text(self, text: str) -> Optional[Dict[str, Any]]:
         """Extract JSON from text that may contain markdown or other formatting"""
         

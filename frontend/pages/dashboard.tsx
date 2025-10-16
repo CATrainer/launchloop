@@ -74,7 +74,7 @@ export default function Dashboard() {
   const handleResume = (e: React.MouseEvent, projectId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push(`/projects/new?resume=${projectId}`);
+    router.push(`/projects/create?resume=${projectId}`);
   };
 
   return (
@@ -125,7 +125,7 @@ export default function Dashboard() {
             </div>
             {canCreateNew ? (
               <Link
-                href="/projects/new"
+                href="/projects/create"
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
               >
                 + New Project
@@ -258,7 +258,7 @@ export default function Dashboard() {
                 Create your first landing page to get started
               </p>
               <Link
-                href="/projects/new"
+                href="/projects/create"
                 className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
               >
                 Create First Project
