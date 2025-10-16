@@ -16,6 +16,7 @@ export default function ProjectDetail() {
   const { data: project, isLoading } = useProject(id as string);
   const [subdomain, setSubdomain] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [showExtractedData, setShowExtractedData] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Fetch signups
@@ -60,6 +61,24 @@ export default function ProjectDetail() {
     onError: (error: any) => {
       setToast({
         message: error.response?.data?.detail || 'Failed to unpublish project',
+        type: 'error',
+      });
+    },
+  });
+
+  // Retry generation mutation
+  const retryMutation = useMutation({
+    mutationFn: () => generateAPI.retry(id as string),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project', id] });
+      setToast({ message: 'Generation restarted! Redirecting...', type: 'success' });
+      setTimeout(() => {
+        router.push(`/projects/new?resume=${id}`);
+      }, 1500);
+    },
+    onError: (error: any) => {
+      setToast({
+        message: error.response?.data?.detail || 'Failed to retry generation',
         type: 'error',
       });
     },
@@ -177,6 +196,16 @@ export default function ProjectDetail() {
                 </div>
               </div>
               <div className="flex gap-2">
+                {project.status === 'FAILED' && (
+                  <button
+                    onClick={() => retryMutation.mutate()}
+                    disabled={retryMutation.isPending}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition flex items-center gap-2"
+                  >
+                    <span>🔄</span>
+                    {retryMutation.isPending ? 'Restarting...' : 'Retry Generation'}
+                  </button>
+                )}
                 {project.html_content && (
                   <button
                     onClick={() => setShowPreview(!showPreview)}
@@ -196,6 +225,43 @@ export default function ProjectDetail() {
                 )}
               </div>
             </div>
+
+            {/* Failed State Alert */}
+            {project.status === 'FAILED' && (
+              <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-red-900 mb-1">Generation Failed</h3>
+                    <p className="text-sm text-red-700 mb-3">
+                      Something went wrong during generation. This could be due to API rate limits or a temporary issue.
+                    </p>
+                    <button
+                      onClick={() => retryMutation.mutate()}
+                      disabled={retryMutation.isPending}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition text-sm font-medium"
+                    >
+                      {retryMutation.isPending ? 'Restarting...' : '🔄 Retry Generation'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Generating State Alert */}
+            {project.status === 'GENERATING' && (
+              <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-yellow-900 mb-1">Generation in Progress</h3>
+                    <p className="text-sm text-yellow-700">
+                      This typically takes 60-120 seconds. You can close this page and come back later.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {projectUrl && (
               <div className="mb-6 p-4 bg-blue-50 rounded-lg">
@@ -229,6 +295,35 @@ export default function ProjectDetail() {
                 </p>
               </div>
             </div>
+
+            {/* Extracted Data Section */}
+            {project.generated_data && Object.keys(project.generated_data).length > 0 && (
+              <div className="mb-6">
+                <button
+                  onClick={() => setShowExtractedData(!showExtractedData)}
+                  className="w-full text-left p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition flex justify-between items-center"
+                >
+                  <span className="font-semibold text-gray-900">📋 Extracted Product Data</span>
+                  <span className="text-gray-500">{showExtractedData ? '▼' : '▶'}</span>
+                </button>
+                {showExtractedData && (
+                  <div className="mt-2 p-4 border rounded-lg bg-white">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {Object.entries(project.generated_data).map(([key, value]) => (
+                        <div key={key} className="p-3 bg-gray-50 rounded">
+                          <p className="text-xs text-gray-600 mb-1 font-medium uppercase">
+                            {key.replace(/_/g, ' ')}
+                          </p>
+                          <p className="text-sm text-gray-900">
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Preview Mode */}
             {showPreview && project.html_content && (
