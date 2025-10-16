@@ -244,6 +244,45 @@ async def create_generation(
             }
         )
     
+    # QUALITY GATE: Validate input data completeness
+    template = template_registry.get_template(generation_data.template_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Template not found"
+        )
+    
+    required_fields = template['config'].get('required_fields', [])
+    input_data = generation_data.input_data
+    
+    # Check for missing required fields
+    missing_fields = []
+    empty_fields = []
+    for field in required_fields:
+        if field not in input_data:
+            missing_fields.append(field)
+        elif not input_data[field] or (isinstance(input_data[field], str) and len(input_data[field].strip()) < 10):
+            empty_fields.append(field)
+    
+    if missing_fields or empty_fields:
+        error_parts = []
+        if missing_fields:
+            error_parts.append(f"Missing required fields: {', '.join(missing_fields)}")
+        if empty_fields:
+            error_parts.append(f"These fields need more detail: {', '.join(empty_fields)}")
+        
+        logger.warning("Generation blocked - incomplete data", extra={
+            "user_id": user.id,
+            "project_id": project.id,
+            "missing_fields": missing_fields,
+            "empty_fields": empty_fields
+        })
+        
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot start generation with incomplete data. {'. '.join(error_parts)}. Please provide complete information for all required fields."
+        )
+    
     # Create generation
     generation = generation_service.create_generation(
         db,

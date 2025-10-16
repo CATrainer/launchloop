@@ -14,11 +14,12 @@ class ImageService:
     def __init__(self):
         self.client = openai.OpenAI(
             api_key=settings.OPENAI_API_KEY,
-            timeout=60.0  # 60 second timeout
+            timeout=90.0  # 90 second timeout per image (increased from 60)
         )
         self.model = "dall-e-3"
         self.size = "1024x1024"
         self.quality = "standard"
+        self.max_retries = 2  # Retry failed images up to 2 times
     
     def build_image_prompt(
         self,
@@ -105,7 +106,8 @@ class ImageService:
         results = []
         
         # Use ThreadPoolExecutor for parallel generation
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        # Increased from 4 to 8 workers for faster generation
+        with ThreadPoolExecutor(max_workers=8) as executor:
             futures = {}
             
             for spec in image_specs:

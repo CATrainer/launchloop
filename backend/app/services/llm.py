@@ -22,25 +22,38 @@ class LLMService:
     def extract_product_info(self, user_input: str) -> Dict[str, Any]:
         """Extract structured information from user's product description"""
         
-        prompt = f"""You are an expert at understanding product ideas. Extract structured information from this product description:
+        prompt = f"""You are an expert product strategist. Your job is to extract SPECIFIC, DETAILED information from this product description.
 
+USER INPUT:
 "{user_input}"
 
-CRITICAL RULES:
-1. If the user mentions ANY problem or pain point, extract it
-2. If the user mentions ANY solution or approach, extract it
-3. Be generous with interpretation - infer from context
-4. NEVER return "Unknown" - always extract SOMETHING from the text
-5. If truly unclear, ask for clarification by lowering completeness_score
+YOUR TASK:
+Extract specific details. Be concrete, not vague. If information is missing, identify EXACTLY what's missing.
 
-Examples of good extraction:
+EXTRACTION QUALITY RULES:
+1. Problem: Must be specific (❌ "user problems" ✅ "founders spend 10+ hours/week on repetitive data entry")
+2. Solution: Must be actionable (❌ "helps users" ✅ "automated data entry tool that learns from examples")
+3. Target Audience: Must be narrow (❌ "businesses" ✅ "early-stage SaaS founders with <10 employees")
+4. completeness_score: Be HONEST
+   - Score 0.8-1.0 ONLY if you have specific problem + solution + audience
+   - Score 0.5-0.7 if you have vague problem or solution
+   - Score 0.3-0.5 if you have only generic info
+   - Score <0.3 if most info is missing
+5. missing_info: List SPECIFIC things needed (not "more details" but "target customer industry", "current alternative users are using")
+
+EXAMPLES:
+
 Input: "helps developers deploy faster"
-→ problem: "developers spend too long deploying apps"
-→ solution: "streamlined deployment process"
+❌ BAD extraction (too vague):
+- problem: "deployment is slow"
+- solution: "faster deployment"  
+- completeness: 0.6
 
-Input: "app for founders to focus on important tasks"
-→ problem: "founders waste time on low-value tasks"
-→ solution: "task prioritization system that highlights most important work"
+✅ GOOD extraction (specific):
+- problem: "Developers spend 2-4 hours per week manually configuring deployments and dealing with failed deployments"
+- solution: "One-click deployment automation with automatic rollback on failures"
+- completeness: 0.7
+- missing_info: ["What tech stack?", "How much faster?", "Current deployment process?"]
 
 Return ONLY valid JSON with this exact structure:
 {{
@@ -121,18 +134,45 @@ Score guidance:
         """Generate questions to fill gaps in data"""
         
         required_fields = template_config.get('required_fields', [])
+        missing_info = extracted_data.get('missing_info', [])
+        completeness = extracted_data.get('completeness_score', 0)
         
-        prompt = f"""Template "{template_config['name']}" requires these fields:
+        prompt = f"""You are creating a landing page. The template needs these fields:
 {json.dumps(required_fields, indent=2)}
 
-We have extracted:
+WHAT WE KNOW:
 {json.dumps(extracted_data, indent=2)}
 
-Generate questions to fill gaps. Rules:
-- Max 5 questions
-- Specific, not generic
-- Use context from extracted data in question
-- Mark clearly if optional
+COMPLETENESS: {completeness:.2f}/1.0
+MISSING: {', '.join(missing_info) if missing_info else 'Nothing specific identified'}
+
+YOUR TASK:
+Generate 3-5 SPECIFIC questions to get the exact information needed for these fields.
+
+QUESTION QUALITY RULES:
+1. Ask for CONCRETE details (❌ "What does your product do?" ✅ "What specific task does your product automate?")
+2. Include context from extraction (use their product name, problem, etc.)
+3. Give GOOD examples (specific, realistic, not generic)
+4. Mark required=true ONLY for fields that will appear on the landing page
+5. Prioritize questions that fill completeness_score gaps
+
+EXAMPLES:
+
+❌ BAD Questions:
+{{
+  "field": "value_prop_headline",
+  "question": "What's your value proposition?",
+  "example": "We help users",
+  "required": true
+}}
+
+✅ GOOD Questions:
+{{
+  "field": "value_prop_headline",
+  "question": "Based on your product that helps developers deploy faster, what's the specific outcome? (e.g., 'Deploy in 30 seconds' or 'Zero-downtime deployments')",
+  "example": "Deploy your app in 30 seconds, not 3 hours",
+  "required": true
+}}
 
 Return ONLY valid JSON array: [{{"field": "...", "question": "...", "example": "...", "required": true}}]"""
         
@@ -161,13 +201,14 @@ Return ONLY valid JSON array: [{{"field": "...", "question": "...", "example": "
         self,
         template_config: Dict,
         input_data: Dict[str, Any],
-        retry: bool = False
+        retry_count: int = 0,
+        max_retries: int = 3
     ) -> Tuple[Dict[str, Any], float]:
         """Generate landing page copy"""
         
         required_fields = template_config.get('required_fields', [])
         
-        strict_warning = "\n\nIMPORTANT: Your previous attempt included banned content. Be extremely careful to avoid emojis and generic marketing speak." if retry else ""
+        strict_warning = f"\n\nIMPORTANT: This is attempt {retry_count + 1}/{max_retries + 1}. Previous attempts had issues. Be extremely careful to avoid emojis and generic marketing speak." if retry_count > 0 else ""
         
         prompt = f"""You are a world-class copywriter specializing in landing pages for early-stage products.
 
@@ -252,21 +293,47 @@ Now generate the copy (JSON only, no markdown):"""
                     violations_found.extend(violations)
                     logger.warning("Copy validation failed", extra={
                         "field": field,
-                        "violations": violations
+                        "violations": violations,
+                        "retry_count": retry_count
                     })
             
-            # If validation fails and this isn't a retry, try once more
-            if not all_valid and not retry:
+            # If validation fails and we haven't hit max retries, try again
+            if not all_valid and retry_count < max_retries:
                 logger.info("Retrying generation due to validation failures", extra={
-                    "violations": violations_found
+                    "violations": violations_found,
+                    "retry_count": retry_count + 1,
+                    "max_retries": max_retries
                 })
-                return self.generate_copy(template_config, input_data, retry=True)
+                # Add small delay before retry to avoid rate limits
+                import time
+                time.sleep(2 ** retry_count)  # Exponential backoff: 1s, 2s, 4s
+                return self.generate_copy(template_config, input_data, retry_count + 1, max_retries)
+            
+            # If still invalid after all retries, log but proceed
+            if not all_valid:
+                logger.error("Copy validation failed after all retries", extra={
+                    "violations": violations_found,
+                    "retry_count": retry_count
+                })
             
             return generated_copy, total_cost
         
         except Exception as e:
-            logger.error("Copy generation failed", extra={"error": str(e)}, exc_info=True)
-            raise Exception(f"Failed to generate copy: {str(e)}")
+            # Retry on transient errors (rate limits, timeouts)
+            if retry_count < max_retries and any(keyword in str(e).lower() for keyword in ['rate', 'timeout', 'overloaded', '429', '503']):
+                logger.warning("Copy generation failed with transient error, retrying", extra={
+                    "error": str(e),
+                    "retry_count": retry_count + 1
+                })
+                import time
+                time.sleep(5 * (2 ** retry_count))  # Longer backoff for API errors: 5s, 10s, 20s
+                return self.generate_copy(template_config, input_data, retry_count + 1, max_retries)
+            
+            logger.error("Copy generation failed after retries", extra={
+                "error": str(e),
+                "retry_count": retry_count
+            }, exc_info=True)
+            raise Exception(f"Failed to generate copy after {retry_count + 1} attempts: {str(e)}")
     
     def _extract_json_from_text(self, text: str) -> Optional[Dict[str, Any]]:
         """Extract JSON from text that may contain markdown or other formatting"""
