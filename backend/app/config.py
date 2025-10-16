@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_URL: str = "http://localhost:8000"
     
+    # Additional allowed origins (comma-separated)
+    ALLOWED_ORIGINS: str = ""
+    
     # Database
     DATABASE_URL: str
     

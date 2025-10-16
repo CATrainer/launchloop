@@ -20,10 +20,17 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None
 )
 
+# Build allowed origins list
+allowed_origins = [settings.FRONTEND_URL]
+if settings.ALLOWED_ORIGINS:
+    # Split comma-separated origins and strip whitespace
+    additional_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+    allowed_origins.extend(additional_origins)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

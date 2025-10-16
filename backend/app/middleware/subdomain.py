@@ -7,6 +7,10 @@ from app.config import settings
 
 async def subdomain_middleware(request: Request, call_next):
     """Handle subdomain routing to published projects"""
+    # Skip subdomain logic for CORS preflight requests
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    
     host = request.headers.get("host", "")
     
     # Check if this is the main domain or API subdomain
