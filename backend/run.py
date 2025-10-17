@@ -15,7 +15,7 @@ from pathlib import Path
 # ============================================================================
 
 # Set to True to run migrations on startup
-RUN_MIGRATIONS = True
+RUN_MIGRATIONS = False
 
 # Set to True to seed database on startup (only runs if DB is empty)
 RUN_SEEDING = False

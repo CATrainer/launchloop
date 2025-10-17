@@ -8,7 +8,7 @@ import { QuickReplies } from '../../components/conversation/QuickReplies';
 import { TemplateCard } from '../../components/conversation/TemplateCard';
 import { ThinkingIndicator } from '../../components/conversation/ThinkingIndicator';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '../../lib/api';
+import { conversationAPI } from '../../lib/api';
 
 export default function ConversationPage() {
   const router = useRouter();
@@ -57,12 +57,12 @@ export default function ConversationPage() {
   
   const initializeConversation = async () => {
     try {
-      const response = await api.post('/conversations', {});
+      const response = await conversationAPI.create();
       const conversation = response.data;
       setConversationId(conversation.id);
       
       // Load initial messages
-      const messagesResponse = await api.get(`/conversations/${conversation.id}/messages`);
+      const messagesResponse = await conversationAPI.getMessages(conversation.id);
       const initialMessages = messagesResponse.data;
       
       // Add messages to store (skip for now, welcome message will come from backend)
@@ -83,9 +83,7 @@ export default function ConversationPage() {
     
     try {
       // Send message to backend
-      await api.post(`/conversations/${conversationId}/messages`, {
-        message,
-      });
+      await conversationAPI.sendMessage(conversationId, message);
       
       // Start streaming AI response
       streamAIResponse();
@@ -171,9 +169,7 @@ export default function ConversationPage() {
     if (!conversationId) return;
     
     try {
-      await api.post(`/conversations/${conversationId}/select-template`, null, {
-        params: { template_id: templateId },
-      });
+      await conversationAPI.selectTemplate(conversationId, templateId);
       
       // Send confirmation message
       setUserInput(`I'd like to use the ${templateId} template`);

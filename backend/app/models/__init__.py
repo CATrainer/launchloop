@@ -6,6 +6,7 @@ from app.models.export import Export
 from app.models.admin_action import AdminAction
 from app.models.moderation_item import ModerationItem
 from app.models.rate_limit import RateLimit
+from app.models.conversation import Conversation, ConversationMessage
 
 __all__ = [
     "User",
@@ -16,4 +17,6 @@ __all__ = [
     "AdminAction",
     "ModerationItem",
     "RateLimit",
+    "Conversation",
+    "ConversationMessage",
 ]

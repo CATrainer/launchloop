@@ -75,3 +75,15 @@ export const signupsAPI = {
   list: (projectId: string) => api.get(`/signups/project/${projectId}`),
   export: (projectId: string) => api.get(`/signups/project/${projectId}/export`),
 };
+
+// Conversation endpoints
+export const conversationAPI = {
+  create: (projectId?: string) => api.post('/conversations', { project_id: projectId }),
+  get: (id: string) => api.get(`/conversations/${id}`),
+  getMessages: (id: string) => api.get(`/conversations/${id}/messages`),
+  sendMessage: (id: string, message: string) => 
+    api.post(`/conversations/${id}/messages`, { message }),
+  selectTemplate: (id: string, templateId: string) => 
+    api.post(`/conversations/${id}/select-template`, null, { params: { template_id: templateId } }),
+  delete: (id: string) => api.delete(`/conversations/${id}`),
+};

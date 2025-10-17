@@ -18,6 +18,8 @@ class LLMService:
             timeout=60.0  # 60 second timeout
         )
         self.model = "claude-sonnet-4-20250514"
+        # Alias for conversation_ai.py compatibility
+        self.messages = self.client.messages
     
     def extract_product_info(self, user_input: str) -> Dict[str, Any]:
         """Extract structured information from user's product description"""
