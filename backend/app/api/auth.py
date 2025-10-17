@@ -53,13 +53,15 @@ async def signup(
     token = create_user_token(user)
     
     # Set HTTP-only cookie
-    # secure=True only in production (requires HTTPS)
+    # For cross-domain (frontend on Vercel, backend on Railway):
+    # - samesite="none" is REQUIRED for cross-site cookies
+    # - secure=True is REQUIRED when samesite="none"
     response.set_cookie(
         key="token",
         value=token,
         httponly=True,
-        secure=settings.ENV == "production",  # Only HTTPS in production
-        samesite="lax",
+        secure=True,  # Always True for production (Railway has HTTPS)
+        samesite="none",  # Allow cross-site cookies (Vercel → Railway)
         max_age=7 * 24 * 60 * 60,  # 7 days
         domain=None  # Let browser handle it
     )
@@ -98,13 +100,15 @@ async def login(
     token = create_user_token(user)
     
     # Set HTTP-only cookie
-    # secure=True only in production (requires HTTPS)
+    # For cross-domain (frontend on Vercel, backend on Railway):
+    # - samesite="none" is REQUIRED for cross-site cookies
+    # - secure=True is REQUIRED when samesite="none"
     response.set_cookie(
         key="token",
         value=token,
         httponly=True,
-        secure=settings.ENV == "production",  # Only HTTPS in production
-        samesite="lax",
+        secure=True,  # Always True for production (Railway has HTTPS)
+        samesite="none",  # Allow cross-site cookies (Vercel → Railway)
         max_age=7 * 24 * 60 * 60,  # 7 days
         domain=None  # Let browser handle it
     )
@@ -117,10 +121,13 @@ async def logout(response: Response):
     """Log out a user"""
     
     # Clear cookie with same parameters as when it was set
+    # Must match the samesite and secure settings used when creating the cookie
     response.delete_cookie(
         key="token",
         domain=None,
-        path="/"
+        path="/",
+        samesite="none",
+        secure=True
     )
     
     return {"message": "Logged out successfully"}
