@@ -113,6 +113,13 @@ export default function CreateProject() {
           content: `To create an amazing landing page, I need to know a bit more. Let me ask you a few quick questions:`
         }]);
         
+        // IMPORTANT: Show the FIRST question immediately
+        const firstQuestion = generatedQuestions[0];
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: firstQuestion.question + (firstQuestion.example ? `\n\nExample: ${firstQuestion.example}` : '')
+        }]);
+        
         setStep('questions');
       } else {
         // Skip to name if we have everything
@@ -171,27 +178,17 @@ export default function CreateProject() {
     
     setMessages(prev => [...prev, {
       role: 'assistant',
-      content: 'Perfect! Let me think of some great names for your product...'
+      content: '🎨 Perfect! Let me think of some great names for your product...'
     }]);
     
     try {
-      // Call LLM to generate name options
-      const response = await fetch('/api/v1/generate/names', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          extracted_data: extracted,
-          answers: collectedAnswers
-        })
+      // Call LLM to generate name options with proper auth
+      const response = await generateAPI.names({
+        extracted_data: extracted,
+        answers: collectedAnswers
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to generate names');
-      }
-      
-      const data = await response.json();
-      const names = data.names || [];
+      const names = response.data.names || [];
       setNameOptions(names);
       
       setMessages(prev => [...prev, {
@@ -199,10 +196,35 @@ export default function CreateProject() {
         content: `I've come up with a few name ideas based on what you've told me. Pick one or create your own:`,
         data: { names }
       }]);
-    } catch (error) {
-      // Fallback: generate simple name
-      const fallbackName = extracted.problem?.split(' ').slice(0, 2).join('') || 'MyProduct';
-      setNameOptions([fallbackName]);
+    } catch (error: any) {
+      // Fallback: generate simple names from extracted data
+      const problem = extracted.problem || '';
+      const solution = extracted.solution_approach || '';
+      const words = [...problem.split(' '), ...solution.split(' ')]
+        .filter(w => w.length > 3)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1));
+      
+      const fallbackNames = [
+        words.slice(0, 2).join('') || 'MyProduct',
+        `${words[0] || 'Quick'}Launch`,
+        `${words[0] || 'New'}Hub`,
+        `${words[0] || 'Smart'}Flow`,
+        `${words[0] || 'Pro'}Start`
+      ];
+      
+      setNameOptions(fallbackNames);
+      
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `Here are some name ideas. Pick one or create your own:`,
+        data: { names: fallbackNames }
+      }]);
+      
+      // Show toast that AI failed but we have fallbacks
+      setToast({
+        message: 'Using quick name suggestions. Feel free to enter your own!',
+        type: 'info'
+      });
     } finally {
       setIsLoading(false);
     }

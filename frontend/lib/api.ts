@@ -62,6 +62,8 @@ export const generateAPI = {
     api.post('/generate/extract', { description }),
   questions: (data: { template_id: string; extracted_data: any }) =>
     api.post('/generate/questions', data),
+  names: (data: { extracted_data: any; answers: any }) =>
+    api.post('/generate/names', data),
   create: (data: any) => api.post('/generate', data),
   get: (id: string) => api.get(`/generate/${id}`),
   retry: (id: string) => api.post(`/generate/${id}/retry`),
