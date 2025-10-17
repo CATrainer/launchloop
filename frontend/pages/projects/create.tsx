@@ -347,7 +347,7 @@ export default function CreateProject() {
         project_id: projectId!,
         template_id: templateId,
         input_data: inputData,
-        type: 'NEW'
+        type: 'new'
       });
       
       setGenerationId(genResponse.data.id);
