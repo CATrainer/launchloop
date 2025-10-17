@@ -107,7 +107,14 @@ export default function CreateProject() {
           
           // Restore all state
           setProjectId(state.projectId);
-          setStep(state.step);
+          
+          // If step is 'generating' but we don't have a generationId, 
+          // reset back to 'name' (likely a previous error)
+          const restoredStep = (state.step === 'generating' && !state.generationId) 
+            ? 'name' 
+            : state.step;
+          setStep(restoredStep);
+          
           setIdeaDescription(state.ideaDescription || '');
           setExtractedData(state.extractedData);
           setQuestions(state.questions || []);
@@ -364,6 +371,7 @@ export default function CreateProject() {
         type: 'error'
       });
       setIsLoading(false);
+      setStep('name'); // Reset back to name step on error
     }
   };
 
