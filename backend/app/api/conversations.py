@@ -116,6 +116,7 @@ async def get_messages(
     db: Session = Depends(get_db)
 ):
     """Get all messages in conversation"""
+    # Verify conversation exists and belongs to user
     conversation = db.query(Conversation).filter(
         Conversation.id == conversation_id,
         Conversation.user_id == user.id
@@ -127,6 +128,11 @@ async def get_messages(
             detail="Conversation not found"
         )
     
+    # Query messages directly to avoid lazy loading issues
+    messages_list = db.query(ConversationMessage).filter(
+        ConversationMessage.conversation_id == conversation_id
+    ).order_by(ConversationMessage.created_at).all()
+    
     messages = [
         MessageResponse(
             id=msg.id,
@@ -137,7 +143,7 @@ async def get_messages(
             templates=msg.templates,
             created_at=msg.created_at.isoformat()
         )
-        for msg in conversation.messages
+        for msg in messages_list
     ]
     
     return messages
@@ -212,6 +218,20 @@ async def stream_ai_response(
             detail="Conversation not found"
         )
     
+    # Get the last user message BEFORE the generator (while session is active)
+    last_user_message = db.query(ConversationMessage).filter(
+        ConversationMessage.conversation_id == conversation_id,
+        ConversationMessage.sender == "user"
+    ).order_by(ConversationMessage.created_at.desc()).first()
+    
+    if not last_user_message:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No user message found to respond to"
+        )
+    
+    user_message_text = last_user_message.content
+    
     async def event_generator():
         """Generate SSE events for streaming response"""
         try:
@@ -220,10 +240,6 @@ async def stream_ai_response(
             llm_service = LLMService()
             conversation_ai = ConversationAI(llm_service)
             conversation_ai.conversation_service.db = db
-            
-            # Get last user message
-            last_message = [m for m in conversation.messages if m.sender == "user"][-1]
-            user_message_text = last_message.content
             
             # Extract data from message (parallel with response generation)
             extracted_data = await conversation_ai.extract_data_from_message(

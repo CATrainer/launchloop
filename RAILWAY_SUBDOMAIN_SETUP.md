@@ -63,7 +63,7 @@ async function handleRequest(request) {
   
   // All other subdomains - route to backend for landing pages
   // Backend will handle the subdomain routing
-  const backendUrl = 'https://your-railway-backend.up.railway.app'
+  const backendUrl = 'https://api.thelaunchloop.com'
   const newUrl = new URL(request.url)
   newUrl.host = new URL(backendUrl).host
   
