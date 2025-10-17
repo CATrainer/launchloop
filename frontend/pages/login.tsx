@@ -87,7 +87,7 @@ export default function Login() {
 
               {loginError && (
                 <div className="bg-red-500/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm">
-                  {loginError}
+                  {typeof loginError === 'string' ? loginError : loginError.message || 'Login failed'}
                 </div>
               )}
 
