@@ -57,5 +57,6 @@ class User(Base):
     
     # Relationships
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
     admin_actions = relationship("AdminAction", back_populates="admin", foreign_keys="AdminAction.admin_user_id")
     exports = relationship("Export", back_populates="user", cascade="all, delete-orphan")

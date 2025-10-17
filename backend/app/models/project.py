@@ -57,4 +57,5 @@ class Project(Base):
     user = relationship("User", back_populates="projects")
     generations = relationship("Generation", back_populates="project", cascade="all, delete-orphan")
     signups = relationship("Signup", back_populates="project", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="project", cascade="all, delete-orphan")
     exports = relationship("Export", back_populates="project", cascade="all, delete-orphan")
