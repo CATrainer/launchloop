@@ -45,6 +45,7 @@ export default function CreateProject() {
   // Project & Generation
   const [projectId, setProjectId] = useState<string | null>(null);
   const [generationId, setGenerationId] = useState<string | null>(null);
+  const [isRestoringState, setIsRestoringState] = useState(false);
   
   const [toast, setToast] = useState<{
     message: string;
@@ -69,12 +70,97 @@ export default function CreateProject() {
     mutationFn: (data: any) => generateAPI.create(data),
   });
 
+  // Auto-save state to localStorage
+  const saveStateToStorage = () => {
+    if (!projectId) return;
+    
+    const state = {
+      projectId,
+      step,
+      ideaDescription,
+      extractedData,
+      questions,
+      answers,
+      nameOptions,
+      selectedName,
+      customName,
+      messages: messages.filter(m => m.role !== 'system'), // Don't save system messages
+      timestamp: Date.now()
+    };
+    
+    localStorage.setItem('launchloop_create_state', JSON.stringify(state));
+  };
+
+  // Restore state on mount
+  useEffect(() => {
+    const savedState = localStorage.getItem('launchloop_create_state');
+    
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        
+        // Check if state is recent (within 24 hours)
+        const isRecent = Date.now() - state.timestamp < 24 * 60 * 60 * 1000;
+        
+        if (isRecent && state.projectId) {
+          setIsRestoringState(true);
+          
+          // Restore all state
+          setProjectId(state.projectId);
+          setStep(state.step);
+          setIdeaDescription(state.ideaDescription || '');
+          setExtractedData(state.extractedData);
+          setQuestions(state.questions || []);
+          setAnswers(state.answers || {});
+          setNameOptions(state.nameOptions || []);
+          setSelectedName(state.selectedName || '');
+          setCustomName(state.customName || '');
+          setMessages(state.messages || []);
+          
+          setToast({
+            message: '✨ Continuing where you left off...',
+            type: 'success'
+          });
+          
+          setTimeout(() => setIsRestoringState(false), 500);
+        }
+      } catch (error) {
+        console.error('Failed to restore state:', error);
+        localStorage.removeItem('launchloop_create_state');
+      }
+    }
+  }, []);
+
+  // Auto-save whenever key state changes
+  useEffect(() => {
+    if (projectId && !isRestoringState) {
+      saveStateToStorage();
+    }
+  }, [step, answers, selectedName, customName, messages]);
+
+  // Clear saved state when generation completes
+  const clearSavedState = () => {
+    localStorage.removeItem('launchloop_create_state');
+  };
+
   // Step 1: Analyze idea
   const handleAnalyzeIdea = async () => {
     if (!userInput.trim()) return;
     
     setIsLoading(true);
     setIdeaDescription(userInput);
+    
+    // Create temporary project for state persistence (if not resuming)
+    if (!projectId) {
+      try {
+        const tempProject = await createProjectMutation.mutateAsync({ 
+          name: `Draft ${Date.now()}` 
+        });
+        setProjectId(tempProject.data.id);
+      } catch (error) {
+        console.error('Failed to create draft project:', error);
+      }
+    }
     
     // Add user message
     setMessages(prev => [...prev, {
@@ -243,23 +329,31 @@ export default function CreateProject() {
     setStep('generating');
     
     try {
-      // Create project
-      const projectResponse = await createProjectMutation.mutateAsync({ name: finalName });
-      const project = projectResponse.data;
-      setProjectId(project.id);
+      // Update existing project name or create new
+      if (projectId) {
+        // Update draft project with final name
+        await projectsAPI.update(projectId, { name: finalName });
+      } else {
+        // Fallback: create new project
+        const projectResponse = await createProjectMutation.mutateAsync({ name: finalName });
+        setProjectId(projectResponse.data.id);
+      }
       
       // Start generation
       const templateId = extractedData?.suggested_templates?.[0] || 'modern-saas';
       const inputData = { ...extractedData, ...answers };
       
       const genResponse = await createGenerationMutation.mutateAsync({
-        project_id: project.id,
+        project_id: projectId!,
         template_id: templateId,
         input_data: inputData,
         type: 'NEW'
       });
       
       setGenerationId(genResponse.data.id);
+      
+      // Clear saved state - flow complete
+      clearSavedState();
       
       // Redirect to generation status page
       router.push(`/projects/new?generation=${genResponse.data.id}`);
@@ -270,6 +364,14 @@ export default function CreateProject() {
         type: 'error'
       });
       setIsLoading(false);
+    }
+  };
+
+  // Start over - clear everything
+  const handleStartOver = () => {
+    if (confirm('Start over? This will clear your current progress.')) {
+      clearSavedState();
+      router.reload();
     }
   };
 
@@ -294,13 +396,23 @@ export default function CreateProject() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-4xl mx-auto px-4 py-12">
           {/* Header */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 relative">
             <h1 className="text-4xl font-bold text-gray-900 mb-3">
               ✨ Create Your Landing Page
             </h1>
             <p className="text-lg text-gray-600">
               Tell me about your idea, and I'll help you create a professional landing page
             </p>
+            
+            {/* Start Over button - only show if we have state */}
+            {(messages.length > 0 || step !== 'idea') && (
+              <button
+                onClick={handleStartOver}
+                className="absolute top-0 right-0 text-sm text-gray-500 hover:text-gray-700 underline"
+              >
+                Start Over
+              </button>
+            )}
           </div>
 
           {/* Conversation Container */}
