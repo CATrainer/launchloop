@@ -115,10 +115,10 @@ export default function ProjectDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-dark-navy flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-600">Loading project...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-neon-cyan mb-4"></div>
+          <p className="text-gray-400">Loading project...</p>
         </div>
       </div>
     );
@@ -126,10 +126,10 @@ export default function ProjectDetail() {
 
   if (!project) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-dark-navy flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Project not found</h1>
-          <Link href="/dashboard" className="text-blue-600 hover:underline">
+          <h1 className="text-2xl font-bold text-white mb-2">Project not found</h1>
+          <Link href="/dashboard" className="text-neon-cyan hover:underline">
             ← Back to Dashboard
           </Link>
         </div>
@@ -161,39 +161,51 @@ export default function ProjectDetail() {
         />
       )}
 
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex justify-between items-center">
-              <Link href="/dashboard" className="text-blue-600 hover:underline">
-                ← Back to Dashboard
-              </Link>
-              <span className="text-gray-600">{user?.email}</span>
-            </div>
-          </div>
-        </header>
+      <div className="min-h-screen bg-dark-navy relative overflow-hidden">
+        {/* Animated Background */}
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            background: 'linear-gradient(135deg, #0A0E27 0%, #1A2038 50%, #0A0E27 100%)',
+            backgroundSize: '200% 200%',
+            animation: 'gradientShift 8s ease infinite',
+          }}
+        />
 
-        <main className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+        {/* Content */}
+        <div className="relative z-10">
+          <header className="border-b border-glass-border bg-dark-elevated/60 backdrop-blur-xl">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex justify-between items-center">
+                <Link href="/dashboard" className="text-neon-cyan hover:underline font-semibold">
+                  ← Back to Dashboard
+                </Link>
+                <span className="text-gray-400">{user?.email}</span>
+              </div>
+            </div>
+          </header>
+
+          <main className="container mx-auto px-4 py-8 max-w-6xl">
+            <div className="bg-dark-elevated/60 backdrop-blur-xl rounded-2xl border border-glass-border shadow-glass p-8 mb-8">
             <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">{project.name}</h1>
+                <div>
+                  <h1 className="text-3xl font-bold mb-2 text-white">{project.name}</h1>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    className={`px-3 py-1 rounded-full text-sm font-semibold border ${
                       project.status === 'PUBLISHED'
-                        ? 'bg-green-100 text-green-800'
+                        ? 'bg-green-500/20 text-green-400 border-green-500/30'
                         : project.status === 'GENERATED'
-                        ? 'bg-blue-100 text-blue-800'
+                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                         : project.status === 'GENERATING'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-gray-100 text-gray-800'
+                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                        : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
                     }`}
                   >
                     {project.status}
                   </span>
                   {project.template_id && (
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-400">
                       • {project.template_id.replace('-', ' ')}
                     </span>
                   )}
@@ -204,7 +216,7 @@ export default function ProjectDetail() {
                   <button
                     onClick={() => retryMutation.mutate()}
                     disabled={retryMutation.isPending}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition flex items-center gap-2"
+                    className="px-4 py-2 bg-gradient-to-r from-neon-cyan to-electric-blue text-dark-navy rounded-lg font-bold hover:shadow-glow-cyan disabled:opacity-50 transition flex items-center gap-2"
                   >
                     <span>🔄</span>
                     {retryMutation.isPending ? 'Restarting...' : 'Retry Generation'}
@@ -213,7 +225,7 @@ export default function ProjectDetail() {
                 {project.html_content && (
                   <button
                     onClick={() => setShowPreview(!showPreview)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                    className="px-4 py-2 border border-glass-border rounded-lg hover:bg-dark-surface transition text-gray-300"
                   >
                     {showPreview ? '📊 Show Stats' : '👁️ Preview Page'}
                   </button>
@@ -222,7 +234,7 @@ export default function ProjectDetail() {
                   <button
                     onClick={() => unpublishMutation.mutate()}
                     disabled={unpublishMutation.isPending}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 transition"
+                    className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 disabled:opacity-50 transition font-bold"
                   >
                     {unpublishMutation.isPending ? 'Unpublishing...' : 'Unpublish'}
                   </button>
@@ -232,18 +244,18 @@ export default function ProjectDetail() {
 
             {/* Failed State Alert */}
             {project.status === 'FAILED' && (
-              <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+              <div className="mb-6 p-4 bg-red-500/10 border-2 border-red-500/30 rounded-lg">
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">⚠️</span>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-red-900 mb-1">Generation Failed</h3>
-                    <p className="text-sm text-red-700 mb-3">
+                    <h3 className="font-semibold text-red-400 mb-1">Generation Failed</h3>
+                    <p className="text-sm text-red-300 mb-3">
                       Something went wrong during generation. This could be due to API rate limits or a temporary issue.
                     </p>
                     <button
                       onClick={() => retryMutation.mutate()}
                       disabled={retryMutation.isPending}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition text-sm font-medium"
+                      className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 disabled:opacity-50 transition text-sm font-bold"
                     >
                       {retryMutation.isPending ? 'Restarting...' : '🔄 Retry Generation'}
                     </button>
@@ -254,12 +266,12 @@ export default function ProjectDetail() {
 
             {/* Generating State Alert */}
             {project.status === 'GENERATING' && (
-              <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+              <div className="mb-6 p-4 bg-yellow-500/10 border-2 border-yellow-500/30 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400"></div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-yellow-900 mb-1">Generation in Progress</h3>
-                    <p className="text-sm text-yellow-700">
+                    <h3 className="font-semibold text-yellow-400 mb-1">Generation in Progress</h3>
+                    <p className="text-sm text-yellow-300">
                       This typically takes 60-120 seconds. You can close this page and come back later.
                     </p>
                   </div>
@@ -268,13 +280,13 @@ export default function ProjectDetail() {
             )}
 
             {projectUrl && (
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-2">Your landing page:</p>
+              <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <p className="text-sm text-gray-400 mb-2">Your landing page:</p>
                 <a
                   href={projectUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline font-medium"
+                  className="text-neon-cyan hover:underline font-medium"
                 >
                   {projectUrl}
                 </a>
@@ -282,19 +294,19 @@ export default function ProjectDetail() {
             )}
 
             <div className="grid md:grid-cols-3 gap-6 mb-6">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Signups</p>
-                <p className="text-2xl font-bold">{project.signups_count}</p>
+              <div className="p-4 bg-dark-surface border border-glass-border rounded-lg">
+                <p className="text-sm text-gray-400">Signups</p>
+                <p className="text-2xl font-bold text-neon-cyan">{project.signups_count}</p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Template</p>
-                <p className="text-lg font-semibold capitalize">
+              <div className="p-4 bg-dark-surface border border-glass-border rounded-lg">
+                <p className="text-sm text-gray-400">Template</p>
+                <p className="text-lg font-semibold capitalize text-white">
                   {project.template_id?.replace('-', ' ') || 'None'}
                 </p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Created</p>
-                <p className="text-lg font-semibold">
+              <div className="p-4 bg-dark-surface border border-glass-border rounded-lg">
+                <p className="text-sm text-gray-400">Created</p>
+                <p className="text-lg font-semibold text-white">
                   {new Date(project.created_at).toLocaleDateString()}
                 </p>
               </div>
@@ -305,20 +317,20 @@ export default function ProjectDetail() {
               <div className="mb-6">
                 <button
                   onClick={() => setShowExtractedData(!showExtractedData)}
-                  className="w-full text-left p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition flex justify-between items-center"
+                  className="w-full text-left p-4 bg-dark-surface border border-glass-border hover:bg-dark-elevated rounded-lg transition flex justify-between items-center"
                 >
-                  <span className="font-semibold text-gray-900">📋 Extracted Product Data</span>
-                  <span className="text-gray-500">{showExtractedData ? '▼' : '▶'}</span>
+                  <span className="font-semibold text-white">📋 Extracted Product Data</span>
+                  <span className="text-gray-400">{showExtractedData ? '▼' : '▶'}</span>
                 </button>
                 {showExtractedData && (
-                  <div className="mt-2 p-4 border rounded-lg bg-white">
+                  <div className="mt-2 p-4 border border-glass-border rounded-lg bg-dark-surface">
                     <div className="grid md:grid-cols-2 gap-4">
                       {Object.entries(project.generated_data).map(([key, value]) => (
-                        <div key={key} className="p-3 bg-gray-50 rounded">
-                          <p className="text-xs text-gray-600 mb-1 font-medium uppercase">
+                        <div key={key} className="p-3 bg-dark-elevated border border-glass-border rounded">
+                          <p className="text-xs text-gray-400 mb-1 font-medium uppercase">
                             {key.replace(/_/g, ' ')}
                           </p>
-                          <p className="text-sm text-gray-900">
+                          <p className="text-sm text-white">
                             {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                           </p>
                         </div>
@@ -344,12 +356,12 @@ export default function ProjectDetail() {
                         win.document.close();
                       }
                     }}
-                    className="text-blue-600 hover:underline text-sm"
+                    className="text-neon-cyan hover:underline text-sm font-semibold"
                   >
                     Open in new tab ↗
                   </a>
                 </div>
-                <div className="border rounded-lg overflow-hidden bg-white">
+                <div className="border border-glass-border rounded-lg overflow-hidden bg-dark-surface">
                   <iframe
                     srcDoc={project.html_content}
                     className="w-full"
@@ -461,9 +473,9 @@ export default function ProjectDetail() {
           </div>
 
           {project.html_content && !isPublished && (
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold mb-4">Publish Your Page</h2>
-              <p className="text-gray-600 mb-4">
+            <div className="bg-dark-elevated/60 backdrop-blur-xl rounded-2xl border border-glass-border shadow-glass p-8">
+              <h2 className="text-2xl font-bold mb-4 text-white">Publish Your Page</h2>
+              <p className="text-gray-400 mb-4">
                 Choose a subdomain to make your page live
               </p>
               
@@ -473,22 +485,22 @@ export default function ProjectDetail() {
                   value={subdomain}
                   onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
                   placeholder="my-product"
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-3 bg-dark-surface border border-glass-border rounded-lg focus:ring-2 focus:ring-neon-cyan/50 text-white placeholder-gray-500 outline-none transition"
                 />
-                <span className="flex items-center text-gray-600">
+                <span className="flex items-center text-gray-400">
                   .thelaunchloop.com
                 </span>
               </div>
               
               <button
                 onClick={handlePublish}
-                disabled={!subdomain || publishMutation.isPending}
-                className="mt-4 w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                disabled={publishMutation.isPending || !subdomain}
+                className="px-6 py-3 bg-gradient-to-r from-neon-cyan to-electric-blue text-dark-navy rounded-lg font-bold hover:shadow-glow-cyan disabled:opacity-50 transition flex items-center gap-2"
               >
                 {publishMutation.isPending ? (
-                  <span className="flex items-center justify-center">
+                  <span className="flex items-center gap-2">
                     <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      className="animate-spin h-5 w-5"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -513,12 +525,13 @@ export default function ProjectDetail() {
                   '🚀 Publish Page'
                 )}
               </button>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-400 mt-2">
                 Your page will be live at {subdomain || 'your-subdomain'}.thelaunchloop.com
               </p>
             </div>
           )}
-        </main>
+          </main>
+        </div>
       </div>
     </>
   );
